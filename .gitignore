@@ -1,0 +1,9 @@
+# Secrets (GitHub PAT)
+Secrets.swift
+
+# Xcode
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+DerivedData/
+build/
