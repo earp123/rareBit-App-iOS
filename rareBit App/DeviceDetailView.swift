@@ -11,9 +11,27 @@ import CoreBluetooth
 struct DeviceDetailView: View {
     //temporary add to onAppear
     @State private var uiShortPressDelay: Double = 0
+    @State private var relayCardExpanded = false
+    @State private var showRelayConfirmation = false
+    @State private var showRevertConfirmation = false
+    @State private var updateAvailable: Bool? = nil
+    @State private var latestFirmwareVersion: FirmwareVersion? = nil
+    @State private var checkingForUpdate = false
+    @State private var forceShowDfu = false  // Developer option
+    @State private var longPressTimer: Timer?
+    
+    // Consolidated loading state
+    @State private var viewState: ViewState = .loading
+    
     @EnvironmentObject var ble: BleScanner
     @Environment(\.dismiss) private var dismiss
     let deviceId: UUID
+    
+    enum ViewState {
+        case loading
+        case ready
+        case error(String)
+    }
 
     
     private var deviceType: RareBitDeviceType {
@@ -40,6 +58,62 @@ struct DeviceDetailView: View {
     }
 
     var body: some View {
+        Group {
+            switch viewState {
+            case .loading:
+                loadingView
+            case .ready:
+                contentView
+            case .error(let message):
+                errorView(message: message)
+            }
+        }
+        .padding()
+        .navigationTitle("Device")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            initializeView()
+        }
+        .onChange(of: ble.connectedDeviceIDs) { _, set in
+            if set.contains(deviceId) { return }
+
+            // If we're expecting a DFU reboot for THIS device, don't dismiss.
+            if ble.isAwaitingReboot(deviceId: deviceId) {
+                return
+            }
+
+            dismiss()
+        }
+        .onChange(of: ble.isPoweredOn) { _, poweredOn in
+            if !poweredOn {
+                dismiss()
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+            Text("Loading device information...")
+                .foregroundStyle(.secondary)
+        }
+    }
+    
+    @ViewBuilder
+    private func errorView(message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+            Text(message)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+    
+    @ViewBuilder
+    private var contentView: some View {
         VStack(spacing: 16) {
             let rawName = device?.advertisedName ?? device?.peripheral.name ?? "Unnamed"
             let name = displayName(rawName)
@@ -67,15 +141,22 @@ struct DeviceDetailView: View {
             .overlay {
                 if isConnectedToThisDevice {
                     let level = ble.batteryLevel(for: deviceId)
-                    let glow = batteryGlowColor
-                    let isFull = (level == .full)
 
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(glow, lineWidth: 2)
-                        .shadow(color: glow.opacity(isFull ? 0.85 : 0.70), radius: isFull ? 12 : 10)
-                        .shadow(color: glow.opacity(isFull ? 0.55 : 0.40), radius: isFull ? 22 : 18)
-                        .shadow(color: glow.opacity(isFull ? 0.35 : 0.25), radius: isFull ? 32 : 26)
+                    if level != .unknown {
+                        let glow = batteryGlowColor
+                        let isFull = (level == .full)
+
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(glow, lineWidth: 2)
+                            .shadow(color: glow.opacity(isFull ? 0.85 : 0.70), radius: isFull ? 12 : 10)
+                            .shadow(color: glow.opacity(isFull ? 0.55 : 0.40), radius: isFull ? 22 : 18)
+                            .shadow(color: glow.opacity(isFull ? 0.35 : 0.25), radius: isFull ? 32 : 26)
+                    }
                 }
+            }
+            .onLongPressGesture(minimumDuration: 3.0) {
+                // Developer mode: long press enables DFU card
+                forceShowDfu = true
             }
             if ble.selectedId == deviceId, !ble.dfuStateText.isEmpty {
                 Text(ble.dfuStateText)
@@ -90,6 +171,11 @@ struct DeviceDetailView: View {
             connectionSection
             
             discoverySection
+            
+            // MARK: - Revert Relay to Receiver Card
+            if isReceiverWithRelayFirmware && isConnectedToThisDevice {
+                revertRelayCard
+            }
             
             if hasConfigServiceForThisDevice {
                 configurationSection
@@ -169,18 +255,44 @@ struct DeviceDetailView: View {
 
             }
 
+            // MARK: - Relay DFU Card (Receiver only)
+            if deviceType == .proReceiver && isConnectedToThisDevice {
+                relayDfuCard
+            }
+
             Spacer()
 
         }
-        .padding()
-        .navigationTitle("Device")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            if let cfg = ble.deviceConfig(for: deviceId) {
+    }
+    
+    // MARK: - Initialization
+    
+    private func initializeView() {
+        Task {
+            // If already connected and we have data, skip loading and go straight to ready
+            if ble.connectedDeviceIDs.contains(deviceId),
+               ble.hasConfigService(deviceId) || ble.hasSmpReady(deviceId) {
+                // Already connected with services discovered - show immediately
+                if let cfg = ble.deviceConfig(for: deviceId) {
                     uiShortPressDelay = Double(cfg.shortPressDelay)
+                }
+                
+                // Quick check for updates in background if not already done
+                if updateAvailable == nil, deviceType.releaseTag != nil {
+                    do {
+                        let (needsUpdate, latest) = try await ble.checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
+                        updateAvailable = needsUpdate
+                        latestFirmwareVersion = latest
+                    } catch {
+                        print("⚠️ Failed to check for updates: \(error)")
+                    }
+                }
+                
+                viewState = .ready
+                return
             }
             
-            // Ensure this view is the current UI focus device
+            // First time connecting - show loading and wait for everything
             ble.focusDevice(deviceId)
 
             // Only connect if not already connected or connecting
@@ -188,137 +300,198 @@ struct DeviceDetailView: View {
                !ble.connectingDeviceIDs.contains(deviceId) {
                 ble.connect(deviceId: deviceId)
             }
-
-        }
-        .onChange(of: ble.connectedDeviceIDs) { _, set in
-            if set.contains(deviceId) { return }
-
-            // If we're expecting a DFU reboot for THIS device, don't dismiss.
-            // (Your BleScanner should expose this helper; see note below.)
-            if ble.isAwaitingReboot(deviceId: deviceId) {
+            
+            // Wait for connection
+            var attempts = 0
+            while !ble.connectedDeviceIDs.contains(deviceId) && attempts < 50 {
+                try? await Task.sleep(for: .milliseconds(100))
+                attempts += 1
+            }
+            
+            guard ble.connectedDeviceIDs.contains(deviceId) else {
+                viewState = .error("Failed to connect to device")
                 return
             }
-
-            dismiss()
-        }
-        .onChange(of: ble.isPoweredOn) { _, poweredOn in
-            if !poweredOn {
-                dismiss()
+            
+            // Wait for service discovery and characteristic reads
+            // This gives time for SMP, Config, and FW version to be discovered
+            try? await Task.sleep(for: .seconds(1.5))
+            
+            // Load config if available
+            if let cfg = ble.deviceConfig(for: deviceId) {
+                uiShortPressDelay = Double(cfg.shortPressDelay)
             }
+            
+            // Check for firmware updates (if applicable)
+            if deviceType.releaseTag != nil {
+                checkingForUpdate = true
+                do {
+                    let (needsUpdate, latest) = try await ble.checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
+                    updateAvailable = needsUpdate
+                    latestFirmwareVersion = latest
+                } catch {
+                    print("⚠️ Failed to check for updates: \(error)")
+                    // Don't fail the whole view, just skip update check
+                }
+                checkingForUpdate = false
+            }
+            
+            // Mark view as ready
+            viewState = .ready
         }
-
     }
 
     @ViewBuilder
     private var connectionSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if ble.connectingDeviceIDs.contains(deviceId) {
-                HStack {
-                    ProgressView()
-                    Text("Connecting…")
-                }
-            } else if isConnectedToThisDevice {
-                EmptyView()
-            } else {
-                // not connected + not connecting
-                EmptyView()
-            }
-        }
+        // Connection section not needed in ready state - we're already connected
+        EmptyView()
     }
 
 
     @ViewBuilder
     private var discoverySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if ble.connectedDeviceIDs.contains(deviceId) {
-                if ble.selectedId == deviceId,
-                   ble.hasSmpReady(deviceId) && !ble.hasConfigService(deviceId) {
-
-                    // --- DFU UI (no functionality changes) ---
-                    VStack(alignment: .leading, spacing: 10) {
-                        // Readiness line
-                        HStack(spacing: 8) {
-                            Image(systemName: ble.dfuInProgress ? "arrow.up.circle.fill" : "arrow.up.circle")
-                            Text(ble.dfuInProgress ? "Firmware update in progress" : "Firmware update ready")
-                            Spacer()
-                            Text("\(Int((ble.dfuProgress * 100).rounded()))%")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-                        .foregroundStyle(ble.dfuInProgress ? .orange : .primary)
-
-                        // Progress bar
-                        ProgressView(value: ble.dfuProgress)
-                            .animation(.default, value: ble.dfuProgress)
-
-                        // State + errors
-                        if !ble.dfuStateText.isEmpty {
-                            Text(ble.dfuStateText)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        if let err = ble.dfuErrorText, !err.isEmpty {
-                            Text(err)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                        }
-                        HStack(spacing: 12) {
-                            Button {
-                                Task {
-                                    do {
-                                        ble.dfuErrorText = nil
-                                        ble.dfuStateText = "Step 1: fetching release"
-                                        let release = try await FirmwareService.shared.fetchLatestRelease()
-
-                                        ble.dfuStateText = "Step 2: locating asset"
-                                        guard let asset = release.firmwareAsset() else {
-                                            ble.dfuErrorText = "No firmware asset found"
-                                            return
-                                        }
-
-                                        ble.dfuStateText = "Step 3: downloading firmware"
-                                        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
-
-                                        ble.dfuStateText = "Step 4: starting DFU"
-                                        await MainActor.run {
-                                            ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
-                                        }
-
-                                    } catch {
-                                        ble.dfuErrorText = "Button catch: \(error)"
-                                    }
+        // Only show DFU card when appropriate
+        if shouldShowDfuCard {
+            VStack(alignment: .leading, spacing: 10) {
+                // --- Update Status Banner ---
+                if let updateAvail = updateAvailable {
+                    HStack(spacing: 8) {
+                        Image(systemName: updateAvail ? "arrow.down.circle.fill" : "checkmark.circle.fill")
+                            .foregroundStyle(updateAvail ? .green : .secondary)
+                        
+                        if updateAvail {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Update Available")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                if let latest = latestFirmwareVersion {
+                                    Text("Version \(latest.description)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
                                 }
-                            } label: {
-                                Text("Start DFU")
-                                    .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(ble.dfuInProgress)
-
-                            Button {
-                                ble.cancelDfu()
-                            } label: {
-                                Text("Cancel")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(!ble.dfuInProgress)
+                        } else {
+                            Text("Up to date")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
+                        
+                        Spacer()
                     }
-                    .padding(.top, 6)
-
+                    .padding(10)
+                    .background(updateAvail ? Color.green.opacity(0.15) : Color.secondary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-            } else {
-                Text("Connect to discover services and enable DFU.")
-                    .foregroundStyle(.secondary)
+
+                // --- DFU UI ---
+                VStack(alignment: .leading, spacing: 10) {
+                    // Readiness line
+                    HStack(spacing: 8) {
+                        Image(systemName: ble.dfuInProgress ? "arrow.up.circle.fill" : "arrow.up.circle")
+                        Text(ble.dfuInProgress ? "Firmware update in progress" : "Firmware update ready")
+                        Spacer()
+                        Text("\(Int((ble.dfuProgress * 100).rounded()))%")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(ble.dfuInProgress ? .orange : .primary)
+
+                    // Progress bar
+                    ProgressView(value: ble.dfuProgress)
+                        .animation(.default, value: ble.dfuProgress)
+
+                    // State + errors
+                    if !ble.dfuStateText.isEmpty {
+                        Text(ble.dfuStateText)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let err = ble.dfuErrorText, !err.isEmpty {
+                        Text(err)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        // Auto Update Button (smart install)
+                        Button {
+                            Task {
+                                do {
+                                    ble.dfuErrorText = nil
+                                    let didUpdate = try await ble.autoUpdateIfNeeded(for: deviceId, deviceType: deviceType)
+                                    if !didUpdate {
+                                        print("✅ Device already up to date")
+                                    }
+                                } catch {
+                                    ble.dfuErrorText = "Auto update failed: \(error.localizedDescription)"
+                                }
+                            }
+                        } label: {
+                            Text(updateAvailable == true ? "Install Update" : "Update")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(updateAvailable == true ? .green : .blue)
+                        .disabled(ble.dfuInProgress || deviceType.releaseTag == nil)
+                        
+                        // Manual DFU Button
+                        Button {
+                            Task {
+                                do {
+                                    ble.dfuErrorText = nil
+
+                                    guard let tag = deviceType.releaseTag else {
+                                        ble.dfuErrorText = "No firmware release for this device type"
+                                        return
+                                    }
+
+                                    ble.dfuStateText = "Step 1: fetching \(tag) release"
+                                    let release = try await FirmwareService.shared.fetchRelease(tag: tag)
+
+                                    ble.dfuStateText = "Step 2: locating asset"
+                                    guard let asset = release.firmwareAsset() else {
+                                        ble.dfuErrorText = "No firmware asset found in \(tag) release"
+                                        return
+                                    }
+
+                                    ble.dfuStateText = "Step 3: downloading firmware"
+                                    let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
+
+                                    ble.dfuStateText = "Step 4: starting DFU"
+                                    await MainActor.run {
+                                        ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
+                                    }
+
+                                } catch {
+                                    ble.dfuErrorText = "Manual DFU failed: \(error)"
+                                }
+                            }
+                        } label: {
+                            Text("Manual")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(ble.dfuInProgress)
+
+                        Button {
+                            ble.cancelDfu()
+                        } label: {
+                            Text("Cancel")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(!ble.dfuInProgress)
+                    }
+                }
+                .padding(.top, 6)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(.thinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.thinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     @ViewBuilder
@@ -386,6 +559,172 @@ struct DeviceDetailView: View {
     }
 
 
+    // MARK: - Relay DFU Card
+
+    @ViewBuilder
+    private var relayDfuCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    relayCardExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.title3)
+                        .foregroundStyle(.orange)
+
+                    Text("Relay")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(relayCardExpanded ? 90 : 0))
+                }
+                .padding(14)
+            }
+            .buttonStyle(.plain)
+
+            if relayCardExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider().opacity(0.3)
+
+                    Text("Flash Relay firmware to this Receiver. This will replace the current Receiver firmware with Relay firmware.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Button {
+                        showRelayConfirmation = true
+                    } label: {
+                        Text("Flash Relay Firmware")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .disabled(ble.dfuInProgress)
+//                    .onLongPressGesture(minimumDuration: 2.0) {
+//                        // Developer mode: long press enables DFU card
+//                        forceShowDfu = true
+//                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(.orange.opacity(relayCardExpanded ? 0.4 : 0.15), lineWidth: 1)
+        )
+        .alert("Flash Relay Firmware?", isPresented: $showRelayConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue") {
+                Task {
+                    do {
+                        ble.dfuErrorText = nil
+
+                        ble.dfuStateText = "Step 1: fetching RXRLY_v10.0 release"
+                        let release = try await FirmwareService.shared.fetchRelease(tag: "RXRLY_v10.0")
+
+                        ble.dfuStateText = "Step 2: locating asset"
+                        guard let asset = release.firmwareAsset() else {
+                            ble.dfuErrorText = "No firmware asset found in RXRLY_v10.0 release"
+                            return
+                        }
+
+                        ble.dfuStateText = "Step 3: downloading firmware"
+                        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
+
+                        ble.dfuStateText = "Step 4: starting DFU"
+                        await MainActor.run {
+                            ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
+                        }
+                    } catch {
+                        ble.dfuErrorText = "Relay DFU failed: \(error)"
+                    }
+                }
+            }
+        } message: {
+            Text("This requires an Apple Watch. Flashing Relay firmware will replace the Receiver firmware, and the device will no longer vibrate when alerted. Do you want to continue?")
+        }
+    }
+    
+    // MARK: - Revert Relay to Receiver Card
+    
+    @ViewBuilder
+    private var revertRelayCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "antenna.radiowaves.left.and.right")
+                    .font(.title3)
+                    .foregroundStyle(.orange)
+                
+                Text("Relay Firmware Detected")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                
+                Spacer()
+            }
+            
+            Divider().opacity(0.3)
+            
+            Button {
+                showRevertConfirmation = true
+            } label: {
+                Label("Revert to Receiver Firmware", systemImage: "arrow.counterclockwise")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .disabled(ble.dfuInProgress)
+        }
+        .padding()
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(.orange.opacity(0.3), lineWidth: 1)
+        )
+        .alert("Revert to Receiver Firmware?", isPresented: $showRevertConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue") {
+                Task {
+                    do {
+                        ble.dfuErrorText = nil
+                        
+                        ble.dfuStateText = "Step 1: fetching PRO_RX_v1.8.0 release"
+                        let release = try await FirmwareService.shared.fetchRelease(tag: "PRO_RX_v1.8.0")
+                        
+                        ble.dfuStateText = "Step 2: locating asset"
+                        guard let asset = release.firmwareAsset() else {
+                            ble.dfuErrorText = "No firmware asset found in PRO_RX_v1.8.0 release"
+                            return
+                        }
+                        
+                        ble.dfuStateText = "Step 3: downloading firmware"
+                        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
+                        
+                        ble.dfuStateText = "Step 4: starting DFU"
+                        await MainActor.run {
+                            ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
+                        }
+                    } catch {
+                        ble.dfuErrorText = "Revert failed: \(error)"
+                    }
+                }
+            }
+        } message: {
+            Text("Reverting to Receiver firmware will restore vibration alerts but remove Apple Watch functionality. Do you want to continue?")
+        }
+    }
+
     // MARK: - Bindings
 
     private var shortPressEnabledBinding: Binding<Bool> {
@@ -429,6 +768,61 @@ struct DeviceDetailView: View {
     
     private var hasConfigServiceForThisDevice: Bool {
         isConnectedToThisDevice && ble.hasConfigService(deviceId)
+    }
+    
+    /// Determine if this is a Receiver device running Relay firmware
+    /// Relay firmware is major version 10+ (0xA0+)
+    private var isReceiverWithRelayFirmware: Bool {
+        guard deviceType == .proReceiver else { return false }
+        guard let versionByte = ble.firmwareVersionByteById(deviceId) else { return false }
+        let version = FirmwareVersion(byte: versionByte)
+        return version.major >= 10  // Relay firmware starts at v10.0 (0xA0)
+    }
+    
+    /// Should show the DFU card?
+    /// - Show if update is available
+    /// - Hide if up to date (for known device types with release tags)
+    /// - Hide if receiver has relay firmware (separate revert card is shown instead)
+    /// - Show if developer mode is enabled
+    /// - Show for devices with SMP capability (handles old firmware, unknown types, failed checks)
+    private var shouldShowDfuCard: Bool {
+        // Developer override
+        if forceShowDfu {
+            return true
+        }
+        
+        // Hide for Receiver with Relay firmware (separate revert card handles this)
+        if isReceiverWithRelayFirmware {
+            return false
+        }
+        
+        // Show if we're checking for updates (loading state)
+        if checkingForUpdate {
+            return true
+        }
+        
+        // Show if update is available
+        if updateAvailable == true {
+            return true
+        }
+        
+        // Hide if explicitly up to date AND device type is known
+        // (If device type is unknown, we still want to show DFU for manual updates)
+        if updateAvailable == false && deviceType.releaseTag != nil {
+            return false
+        }
+        
+        // Show for devices with SMP capability
+        // This catches:
+        // - Old firmware devices (updateAvailable == nil, no config service)
+        // - Unknown device types (updateAvailable == nil, no release tag)
+        // - Devices where update check failed
+        if isConnectedToThisDevice && ble.hasSmpReady(deviceId) {
+            return true
+        }
+        
+        // Default: don't show
+        return false
     }
 
 }

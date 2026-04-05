@@ -17,6 +17,61 @@ import WatchKit
 let TARGET_SERVICE_UUID     = CBUUID(string: "33210001-28d5-4b7b-bad0-7dee1eee1b6d")
 let TARGET_NOTIFY_CHAR_UUID = CBUUID(string: "33210002-28d5-4b7b-bad0-7dee1eee1b6d")    // TODO replace
 
+// MARK: - Haptic Presets
+enum HapticPreset: Int, CaseIterable {
+    case doubleNotification = 0   // two .notification, 650ms gap
+    case quadSuccess = 1          // four .success, 300ms gaps
+    case tripleFailure = 2        // three .failure, 350ms gaps
+
+    var label: String {
+        switch self {
+        case .doubleNotification: return "Double"
+        case .quadSuccess:        return "Quad"
+        case .tripleFailure:      return "Triple"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .doubleNotification: return .cyan
+        case .quadSuccess:        return .yellow
+        case .tripleFailure:      return Color(.magenta)
+        }
+    }
+
+    func next() -> HapticPreset {
+        let all = HapticPreset.allCases
+        let nextIndex = (self.rawValue + 1) % all.count
+        return all[nextIndex]
+    }
+
+    @MainActor
+    func play() async {
+        switch self {
+        case .doubleNotification:
+            WKInterfaceDevice.current().play(.notification)
+            try? await Task.sleep(nanoseconds: 650_000_000)
+            WKInterfaceDevice.current().play(.notification)
+
+        case .quadSuccess:
+            WKInterfaceDevice.current().play(.success)
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            WKInterfaceDevice.current().play(.success)
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            WKInterfaceDevice.current().play(.success)
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            WKInterfaceDevice.current().play(.success)
+
+        case .tripleFailure:
+            WKInterfaceDevice.current().play(.failure)
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            WKInterfaceDevice.current().play(.failure)
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            WKInterfaceDevice.current().play(.failure)
+        }
+    }
+}
+
 // MARK: - Scanner Class
 @MainActor
 final class WatchBLEScanner: NSObject, ObservableObject{
@@ -41,6 +96,27 @@ final class WatchBLEScanner: NSObject, ObservableObject{
     @Published private(set) var discoveredServiceUUIDs: [String] = []
     @Published private(set) var discoveredCharacteristicUUIDs: [String] = []
     @Published private(set) var isActive: Bool = false
+
+    // Link status (from the two MSBs of the notify byte)
+    @Published private(set) var flag1Linked: Bool = false
+    @Published private(set) var flag2Linked: Bool = false
+
+    // Per-flag haptic assignment
+    @Published private(set) var flag1Haptic: HapticPreset = .doubleNotification
+    @Published private(set) var flag2Haptic: HapticPreset = .quadSuccess
+
+    func cycleHaptic(for flag: Int) {
+        switch flag {
+        case 1:
+            flag1Haptic = flag1Haptic.next()
+            Task { await flag1Haptic.play() }
+        case 2:
+            flag2Haptic = flag2Haptic.next()
+            Task { await flag2Haptic.play() }
+        default:
+            break
+        }
+    }
 
 
 
@@ -341,6 +417,8 @@ extension WatchBLEScanner: CBCentralManagerDelegate {
             self.isConnecting = false
             self.isConnected = false
             self.isActive = false
+            self.flag1Linked = false
+            self.flag2Linked = false
 
             self.log("⚠️ DISCONNECTED. auto=\(self.shouldAutoReconnect) target=\(self.reconnectTargetID?.uuidString ?? "nil")")
 
@@ -436,7 +514,6 @@ extension WatchBLEScanner: CBPeripheralDelegate {
                                 didUpdateValueFor characteristic: CBCharacteristic,
                                 error: Error?) {
 
-
         Task { @MainActor in
             if let error = error {
                 self.log("❌ didUpdateValue error: \(error.localizedDescription)")
@@ -445,47 +522,44 @@ extension WatchBLEScanner: CBPeripheralDelegate {
             guard let data = characteristic.value else { return }
             guard let byte = data.first else { return }
 
-            self.log("📥 Page Alert: \(data as NSData)")
-            
-            guard !isPlayingHaptic else {
-                //log("🔇 Haptic suppressed (cooldown active)")
+            // --- Parse byte ---
+            // Bit 7: Flag 1 linked
+            // Bit 6: Flag 2 linked
+            // Bits 1..0: Alert source (0x01 = Flag 1, 0x02 = Flag 2, 0x00 = none)
+            let linkBits = byte & 0xC0
+            let alertBits = byte & 0x03
+
+            self.log("📥 Notify byte: 0x\(String(format: "%02X", byte))  links=0b\(String(linkBits >> 6, radix: 2))  alert=0x\(String(format: "%02X", alertBits))")
+
+            // --- Update link status ---
+            self.flag1Linked = (byte & 0x80) != 0
+            self.flag2Linked = (byte & 0x40) != 0
+
+            // --- Handle alert (if any) ---
+            guard alertBits != 0x00 else {
+                self.log("ℹ️ Status update only (no alert)")
                 return
             }
 
+            guard !isPlayingHaptic else { return }
             isPlayingHaptic = true
-            
-            switch byte {
+
+            let preset: HapticPreset
+            switch alertBits {
             case 0x01:
-                self.log("🔵 Alert Type 1")
-
-                //Distinct two tap, longer pulses and longer gap
-                WKInterfaceDevice.current().play(.notification)
-                try? await Task.sleep(nanoseconds: 700_000_000)
-                WKInterfaceDevice.current().play(.notification)
-
+                preset = self.flag1Haptic
+                self.log("🔵 Flag 1 alert → \(preset.label)")
             case 0x02:
-                self.log("🔴 Alert Type 2")
-
-                
-                WKInterfaceDevice.current().play(.failure)
-                try? await Task.sleep(nanoseconds: 350_000_000)
-                WKInterfaceDevice.current().play(.failure)
-                try? await Task.sleep(nanoseconds: 350_000_000)
-                WKInterfaceDevice.current().play(.failure)
-                
-                //another, more punchy three tap alert
-                //slightly less intense
-                //less than 300ms starts to clip
-    //            WKInterfaceDevice.current().play(.success)
-    //            try? await Task.sleep(nanoseconds: 350_000_000)
-    //            WKInterfaceDevice.current().play(.success)
-    //            try? await Task.sleep(nanoseconds: 350_000_000)
-    //            WKInterfaceDevice.current().play(.success)
-
+                preset = self.flag2Haptic
+                self.log("🔴 Flag 2 alert → \(preset.label)")
             default:
-                self.log("⚪️ Unknown alert type: \(byte)")
+                self.log("⚪️ Unknown alert source: 0x\(String(format: "%02X", alertBits))")
                 WKInterfaceDevice.current().play(.click)
+                isPlayingHaptic = false
+                return
             }
+
+            await preset.play()
 
             Task {
                 try? await Task.sleep(nanoseconds: hapticCooldown)
@@ -494,7 +568,6 @@ extension WatchBLEScanner: CBPeripheralDelegate {
                     self.log("🔓 Haptic re-enabled")
                 }
             }
-            
         }
     }
 

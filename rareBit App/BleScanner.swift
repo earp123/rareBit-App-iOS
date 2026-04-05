@@ -211,6 +211,81 @@ final class BleScanner: NSObject, ObservableObject {
         sessions[id]?.firmwareVersion
     }
     
+    func firmwareVersionByteById(_ id: UUID) -> UInt8? {
+        guard let session = sessions[id],
+              let versionString = session.firmwareVersion else {
+            return nil
+        }
+        
+        let version = FirmwareVersion(versionString)
+        return version.asByte
+    }
+    
+    /// Check if a firmware update is available for this device
+    func checkFirmwareUpdate(for deviceId: UUID, deviceType: RareBitDeviceType) async throws -> (needsUpdate: Bool, latestVersion: FirmwareVersion?) {
+        guard let releaseTag = deviceType.releaseTag else {
+            throw FirmwareUpdateError.noReleaseTag
+        }
+        
+        guard let versionString = firmwareVersionById(deviceId) else {
+            throw FirmwareUpdateError.versionUnknown
+        }
+        
+        let current = FirmwareVersion(versionString)
+        let result = try await FirmwareService.shared.checkForUpdate(tag: releaseTag, currentVersion: versionString)
+        
+        print("📱 Update check for \(deviceType.displayName): Current=\(current) Latest=\(result.release.tag_name) NeedsUpdate=\(result.needsUpdate)")
+        
+        return (result.needsUpdate, FirmwareVersion(result.release.tag_name))
+    }
+    
+    /// Automatically download and start DFU if update is available
+    func autoUpdateIfNeeded(for deviceId: UUID, deviceType: RareBitDeviceType) async throws -> Bool {
+        let (needsUpdate, latestVersion) = try await checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
+        
+        guard needsUpdate else {
+            await MainActor.run {
+                dfuStateText = "Already up to date (\(latestVersion?.description ?? "unknown"))"
+            }
+            return false
+        }
+        
+        guard let releaseTag = deviceType.releaseTag else {
+            throw FirmwareUpdateError.noReleaseTag
+        }
+        
+        await MainActor.run {
+            dfuErrorText = nil
+            dfuStateText = "Update available: \(latestVersion?.description ?? "unknown")"
+        }
+        
+        // Fetch and download
+        await MainActor.run {
+            dfuStateText = "Fetching \(releaseTag) release..."
+        }
+        let release = try await FirmwareService.shared.fetchRelease(tag: releaseTag)
+        
+        await MainActor.run {
+            dfuStateText = "Locating firmware asset..."
+        }
+        guard let asset = release.firmwareAsset() else {
+            throw FirmwareUpdateError.noAssetFound
+        }
+        
+        await MainActor.run {
+            dfuStateText = "Downloading firmware..."
+        }
+        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
+        
+        await MainActor.run {
+            dfuStateText = "Starting DFU update..."
+            startDfuFromURL(for: deviceId, fileURL: fileURL)
+        }
+        
+        return true
+    }
+
+    
     func hasSmpReady(_ id: UUID) -> Bool {
         let s = session(for: id)
         return s.hasSmpService && s.hasSmpCharacteristic

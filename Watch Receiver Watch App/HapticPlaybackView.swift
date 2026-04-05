@@ -5,14 +5,16 @@ struct HapticPlaybackView: View {
     @State private var isPlaying = false
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack {
             Spacer()
 
             Button {
                 guard !isPlaying else { return }
+                let preset = currentPreset
+                currentPreset = currentPreset.next()
                 isPlaying = true
                 Task {
-                    await currentPreset.play()
+                    await preset.play()
                     isPlaying = false
                 }
             } label: {
@@ -23,21 +25,6 @@ struct HapticPlaybackView: View {
                         Image(systemName: "play.fill")
                             .font(.title)
                             .foregroundStyle(currentPreset.color)
-                    )
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                currentPreset = currentPreset.next()
-            } label: {
-                Text("Next")
-                    .font(.footnote)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .stroke(currentPreset.color, lineWidth: 1.5)
                     )
             }
             .buttonStyle(.plain)

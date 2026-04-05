@@ -8,42 +8,53 @@ struct DeviceDetailView: View {
         VStack(alignment: .trailing, spacing: 10) {
 
             // Header area
-            VStack(alignment: .trailing, spacing: 6) {
-                Text(device.name)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(device.name.replacingOccurrences(of: "rareBit ", with: ""))
                     .font(.headline)
                     .lineLimit(1)
-                    .multilineTextAlignment(.trailing)
                     .fontWeight(.semibold)
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(relay.isConnected ? "Connected" : "Connecting…")
-                        .font(.footnote)
+                Text(relay.isConnected ? "Connected" : "Connecting…")
+                    .font(.footnote)
 
-                    Text(relay.isActive ? "Active" : "Inactive")
-                        .font(.footnote)
-                        .foregroundStyle(relay.isActive ? .primary : .secondary)
-                }
+                Text(relay.isActive ? "Active" : "Inactive")
+                    .font(.footnote)
+                    .foregroundStyle(relay.isActive ? .primary : .secondary)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
 
-            // Big empty space for future dashboard elements / control knobs
-            Spacer(minLength: 12)
-
-            // Subtle placeholder so the space feels intentional
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(.white.opacity(0.12), lineWidth: 1)
-                .frame(height: 80)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-
-            Spacer(minLength: 0)
+            // Flag link status icons
+            HStack(spacing: 4) {
+                flagIcon(flag: 1, linked: relay.flag1Linked, preset: relay.flag1Haptic)
+                flagIcon(flag: 2, linked: relay.flag2Linked, preset: relay.flag2Haptic)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding()
-        .navigationTitle("")               // removes title text
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .onAppear {
             guard !relay.isConnected, !relay.isConnecting else { return }
             relay.connectAndStayConnected(to: device.id)
         }
+    }
 
+    @ViewBuilder
+    private func flagIcon(flag: Int, linked: Bool, preset: HapticPreset) -> some View {
+        Button {
+            relay.cycleHaptic(for: flag)
+        } label: {
+            Image("FLAG")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 70, height: 70)
+                .opacity(linked ? 1.0 : 0.15)
+                .padding(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(linked ? preset.color : .gray.opacity(0.2), lineWidth: 2)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!linked)
     }
 }

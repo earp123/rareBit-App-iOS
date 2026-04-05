@@ -34,6 +34,20 @@ enum RareBitDeviceType: String, CaseIterable {
         }
     }
 
+    /// GitHub release tag for this device type's firmware
+    /// These should match your latest GitHub release tags exactly
+    /// Update these when you release new firmware versions
+    /// Current releases: PRO_FLAG_v1.9.0, PRO_RX_v1.8.0, RXRLY_v10.0
+    var releaseTag: String? {
+        switch self {
+        case .proFlag: return "PRO_FLAG_v1.9.0"      // Update when releasing new version
+        case .proReceiver: return "PRO_RX_v1.8.0"    // Update when releasing new version
+        case .relay: return "RXRLY_v10.0"            // Update when releasing new version
+        case .blink: return nil                      // No DFU support
+        case .unknown: return nil
+        }
+    }
+
     var displayName: String {
         switch self {
         case .proFlag: return "PRO Flag"
