@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 1
 
       - name: Select Xcode
-        run: xcode-select -switch /Applications/Xcode.app
+        run: xcode-select -p
 
       - name: Show build environment
         run: |
