@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 1
 
       - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode.app
+        run: xcode-select -switch /Applications/Xcode.app
 
       - name: Show build environment
         run: |
