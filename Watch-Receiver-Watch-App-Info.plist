@@ -6,5 +6,11 @@
 	<string></string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Needed for receiving alerts.</string>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+		<string>alarm</string>
+		<string>bluetooth-alert</string>
+	</array>
 </dict>
 </plist>

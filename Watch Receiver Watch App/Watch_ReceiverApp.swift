@@ -2,29 +2,27 @@
 //  Watch_ReceiverApp.swift
 //  Watch Receiver Watch App
 //
-//  Created by Sam Rall on 12/23/25.
-//
 
 import SwiftUI
 
 @main
 struct Watch_Receiver_Watch_AppApp: App {
     @StateObject private var relay = WatchBLEScanner()
+    @StateObject private var workoutManager = WorkoutManager()
+    @StateObject private var matchTimer = MatchTimer()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(relay)
+                .environmentObject(workoutManager)
+                .environmentObject(matchTimer)
                 .task {
-                    // Ask once early; background alerts will depend on this
-                    await relay.ensureNotificationPermission()
+                    await workoutManager.requestAuthorization()
                 }
         }
         .backgroundTask(.bluetoothAlert) {
-            // Called when watchOS wakes you due to monitored characteristic activity
             await relay.handleBluetoothAlertBackgroundWake()
         }
     }
 }
-
-

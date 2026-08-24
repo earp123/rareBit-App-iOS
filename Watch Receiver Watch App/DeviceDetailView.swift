@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DeviceDetailView: View {
     @EnvironmentObject var relay: WatchBLEScanner
+    @EnvironmentObject var workoutManager: WorkoutManager
     let device: WatchBLEScanner.Device
 
     var body: some View {
@@ -33,8 +34,10 @@ struct DeviceDetailView: View {
         .padding()
         .navigationBarBackButtonHidden(true)
         .onAppear {
-            guard !relay.isConnected, !relay.isConnecting else { return }
-            relay.connectAndStayConnected(to: device.id)
+            if !relay.isConnected, !relay.isConnecting {
+                relay.connectAndStayConnected(to: device.id)
+            }
+            workoutManager.startSession()
         }
     }
 

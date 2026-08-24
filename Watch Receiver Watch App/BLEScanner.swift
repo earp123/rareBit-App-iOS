@@ -136,8 +136,14 @@ final class WatchBLEScanner: NSObject, ObservableObject{
         let lastSeen: Date
     }
 
-    /// Case-insensitive substring match on advertised name / peripheral name.
-    var nameFilter: String = "rareBit"
+    /// Case-insensitive substrings that must ALL appear in the advertised /
+    /// peripheral name. "rareBit" on its own matched every device on the bench,
+    /// so "Relay" narrows it to the receivers we actually pair with.
+    var nameFilters: [String] = ["rareBit", "Relay"]
+
+    /// Service a device must advertise to appear in the scan list.
+    /// Set to nil to accept anything that passes `nameFilters`.
+    var requiredServiceUUID: CBUUID? = TARGET_SERVICE_UUID
 
     override init() {
         super.init()
@@ -249,13 +255,24 @@ final class WatchBLEScanner: NSObject, ObservableObject{
     }
 
     
-    private func matchesFilter(advertisedName: String?) -> Bool {
-        let filter = nameFilter.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !filter.isEmpty else { return true }
-        let f = filter.lowercased()
+    private func matchesNameFilter(_ advertisedName: String?) -> Bool {
+        let tokens = nameFilters
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !tokens.isEmpty else { return true }
 
-        let name = (advertisedName ?? "").lowercased()
-        return name.contains(f)
+        let name = advertisedName ?? ""
+        return tokens.allSatisfy { name.localizedCaseInsensitiveContains($0) }
+    }
+
+    /// Matches against the advertising packet only. CoreBluetooth can't see a
+    /// peripheral's GATT table until after it connects, so what the device
+    /// chooses to advertise is the only service information available at scan
+    /// time — a device that exposes the service but doesn't advertise it will
+    /// not pass this check.
+    private func matchesServiceFilter(advertisedServiceUUIDs: [String]) -> Bool {
+        guard let required = requiredServiceUUID else { return true }
+        return advertisedServiceUUIDs.contains { $0.caseInsensitiveCompare(required.uuidString) == .orderedSame }
     }
 
     private func upsertDevice(id: UUID, name: String, rssi: Int) {
@@ -315,7 +332,7 @@ final class WatchBLEScanner: NSObject, ObservableObject{
         // Optional: you can re-assert subscription here if you want belt-and-suspenders.
         // If your didUpdateValueFor is already firing and posting alerts, you may not need more.
     }
-
+    
 }
 // MARK: - CBCentralManagerDelegate
 extension WatchBLEScanner: CBCentralManagerDelegate {
@@ -350,6 +367,10 @@ extension WatchBLEScanner: CBCentralManagerDelegate {
 
         let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
         let bestName = advName ?? peripheral.name ?? "Unknown"
+        // Flatten to strings up front: CBUUID isn't Sendable, so it shouldn't
+        // cross into the @MainActor task below.
+        let advServiceUUIDs = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID])?
+            .map(\.uuidString) ?? []
 
         Task { @MainActor in
             // Always cache the peripheral reference so we can connect later
@@ -365,8 +386,13 @@ extension WatchBLEScanner: CBCentralManagerDelegate {
                 return
             }
 
-            // Otherwise, normal scanning flow (your existing rareBit filter)
-            guard self.matchesFilter(advertisedName: bestName) else { return }
+            // Otherwise, normal scanning flow: name AND advertised service must match
+            guard self.matchesNameFilter(bestName) else { return }
+
+            guard self.matchesServiceFilter(advertisedServiceUUIDs: advServiceUUIDs) else {
+                self.log("⏭ Skipped \(bestName): name matched but service not advertised. adv=[\(advServiceUUIDs.joined(separator: ", "))]")
+                return
+            }
 
             self.log("Discovered: \(bestName) rssi=\(RSSI.intValue) id=\(peripheral.identifier)")
             self.upsertDevice(id: peripheral.identifier, name: bestName, rssi: RSSI.intValue)
@@ -503,6 +529,7 @@ extension WatchBLEScanner: CBPeripheralDelegate {
                 self.reconnectTargetID = peripheral.identifier
                 self.shouldAutoReconnect = true
                 self.log("🧷 Auto-reconnect ARMED for target=\(peripheral.identifier)")
+                
             } else {
                 self.log("⚠️ Notify DISABLED for \(characteristic.uuid.uuidString)")
                 self.isActive = false
@@ -572,4 +599,5 @@ extension WatchBLEScanner: CBPeripheralDelegate {
     }
 
 }
+
 
