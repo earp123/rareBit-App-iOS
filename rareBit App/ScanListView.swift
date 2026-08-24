@@ -14,6 +14,50 @@ struct ScanListView: View {
                 Color.black.ignoresSafeArea()
 
                 List {
+                    // Relay recovery: an interrupted DFU leaves the bootloader
+                    // advertising the DFU service on every boot. Retry the
+                    // flash from here — that IS the recovery path.
+                    ForEach(ble.relayBootloaderIds, id: \.self) { bootId in
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Relay in recovery mode")
+                                        .fontWeight(.semibold)
+                                    Text("Firmware update was interrupted")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                            }
+
+                            if ble.relayDfuInProgress {
+                                ProgressView(value: ble.relayDfuProgress)
+                                if !ble.relayDfuStateText.isEmpty {
+                                    Text(ble.relayDfuStateText)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                if let err = ble.relayDfuErrorText, !err.isEmpty {
+                                    Text(err)
+                                        .font(.caption)
+                                        .foregroundStyle(.red)
+                                }
+                                Button {
+                                    Task { await ble.retryRelayFlash(bootloaderId: bootId) }
+                                } label: {
+                                    Text("Retry Flash")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.orange)
+                            }
+                        }
+                        .padding(.vertical, 6)
+                    }
+
                     ForEach(ble.devices) { d in
                         let isConnected = ble.connectedDeviceIDs.contains(d.id)
                         let isScanning = ble.isScanning
@@ -70,10 +114,13 @@ struct ScanListView: View {
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 32) {
                     findDevicesButton
+                        .frame(maxWidth: .infinity)
+                    optionsButton
+                        .frame(maxWidth: .infinity)
                 }
-                .padding(.leading, 16)
+                .padding(.horizontal, 16)
                 .padding(.bottom, 14)
 
             }
@@ -122,13 +169,62 @@ struct ScanListView: View {
             Text("Find Devices")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.black)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 
         }
         .disabled(!ble.isPoweredOn)
+    }
+    
+    // MARK: - Options Button
+    
+    private var optionsButton: some View {
+        Menu {
+            Link(destination: URL(string: "https://www.rarebitofficial.com/order")!) {
+                Label("User Manual", systemImage: "book")
+            }
+            
+            Menu {
+                Link(destination: URL(string: "https://refsneedlovetoo.com/collections/referee-gear/products/next-generation-buzzer-flags-rarebit-pro-set")!) {
+                    Label("RefsNeedLoveToo", systemImage: "heart.fill")
+                }
+                
+                Link(destination: URL(string: "https://thetopref.com/collections/beep-flags/products/rarebit-beep-flags")!) {
+                    Label("The Top Ref", systemImage: "star.fill")
+                }
+            } label: {
+                Label("Buy PRO Sets", systemImage: "cart")
+            }
+            
+            Link(destination: URL(string: "https://rarebitofficial.com")!) {
+                Label("rareBitOfficial.com", systemImage: "globe")
+            }
+            
+            Link(destination: URL(string: "https://rarebitofficial.com/applewatch")!) {
+                Label("Apple Watch", systemImage: "applewatch")
+            }
+            
+            Link(destination: URL(string: "mailto:reply@rarebit.biz")!) {
+                Label("Support", systemImage: "envelope.fill")
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 16, weight: .semibold))
+                Text("Options")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .foregroundColor(.black)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .menuStyle(.automatic)
     }
     
     // Cyan for full, green for high, blue for mid, red for low, yellow for unknown.

@@ -1,5 +1,5 @@
 {
-  "originHash" : "92196968c17154b069f7a010b65fed80d8e7fa364838f4367e1b900b94ecee3e",
+  "originHash" : "8024f755fb08eb4c0772c70c51fd948fdf45710a97322b337a9055548a9771c4",
   "pins" : [
     {
       "identity" : "ios-ble-library",
@@ -26,6 +26,15 @@
       "state" : {
         "revision" : "13f09628c2de7f3fd5703516c4f5650e063ddb6c",
         "version" : "1.0.3"
+      }
+    },
+    {
+      "identity" : "ios-dfu-library",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/NordicSemiconductor/IOS-DFU-Library.git",
+      "state" : {
+        "revision" : "4773d7eed944684dfdd177a4a91af8a89ebbaac8",
+        "version" : "4.16.0"
       }
     },
     {

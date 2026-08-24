@@ -63,6 +63,21 @@ final class BleScanner: NSObject, ObservableObject {
     @Published var dfuUpgradeState: FirmwareUpgradeState?
     @Published var dfuEffectiveSuccess = false
 
+    // Relay legacy OTA DFU state (docs/relay-dfu-flow.md)
+    @Published var relayDfuInProgress = false
+    @Published var relayDfuProgress: Double = 0.0
+    @Published var relayDfuStateText: String = ""
+    @Published var relayDfuErrorText: String?
+    @Published var relayUpdateAvailable: Bool?
+    @Published var relayLatestVersion: FirmwareVersion?
+    /// Relays advertising the legacy DFU service — a device mid-update, or one
+    /// stuck in the bootloader after an interrupted flash (recovery path).
+    @Published private(set) var relayBootloaderIds: [UUID] = []
+
+    private var bootloaderPeripherals: [UUID: CBPeripheral] = [:]
+    private var relayTriggerContinuation: CheckedContinuation<Void, Error>?
+    private let relayFlasher = LegacyDfuFlasher()
+
     @Published var isPoweredOn = false
     @Published var isScanning = false
     @Published var devices: [DiscoveredDevice] = []
@@ -193,6 +208,7 @@ final class BleScanner: NSObject, ObservableObject {
     // ✅ Per-device characteristic caches (so multi-connected devices don’t fight)
     private var cfgCharacteristicById: [UUID: CBCharacteristic] = [:]
     private var fwvCharacteristicById: [UUID: CBCharacteristic] = [:]
+    private var dfuTriggerCharacteristicById: [UUID: CBCharacteristic] = [:]
 
 
     override init() {
@@ -228,17 +244,187 @@ final class BleScanner: NSObject, ObservableObject {
         }
         
         guard let versionString = firmwareVersionById(deviceId) else {
-            throw FirmwareUpdateError.versionUnknown
+            // FWV characteristic missing — old firmware that predates it.
+            // Assume an update is needed so the device can be recovered.
+            let latest = try await FirmwareService.shared.latestVersion(for: releaseTag)
+            print("📱 FWV unreadable for \(deviceType.displayName) — assuming update needed (latest: \(latest))")
+            return (true, latest)
         }
-        
+
         let current = FirmwareVersion(versionString)
         let result = try await FirmwareService.shared.checkForUpdate(tag: releaseTag, currentVersion: versionString)
-        
+
         print("📱 Update check for \(deviceType.displayName): Current=\(current) Latest=\(result.release.tag_name) NeedsUpdate=\(result.needsUpdate)")
-        
+
         return (result.needsUpdate, FirmwareVersion(result.release.tag_name))
     }
     
+    // MARK: - Relay legacy OTA DFU (docs/relay-dfu-flow.md) — Relay ONLY.
+    // PRO Flag / PRO Receiver keep the SMP (McuManager) flow below unchanged.
+
+    /// Update check against the public firmware-releases repo (cached for the
+    /// app session). No-op result if the FW version byte isn't readable yet.
+    func checkRelayUpdate(for deviceId: UUID, forceRefresh: Bool = false) async {
+        guard let current = firmwareVersionByteById(deviceId) else {
+            relayUpdateAvailable = nil
+            return
+        }
+        do {
+            let (update, needs) = try await RelayDfuService.shared.updateAvailable(currentVersionByte: current, forceRefresh: forceRefresh)
+            relayUpdateAvailable = needs
+            relayLatestVersion = update.version
+            print("[RelayDFU] Check: current=0x\(String(format: "%02X", current)) latest=\(update.manifest.fw_version_byte) needsUpdate=\(needs)")
+        } catch {
+            print("[RelayDFU] Update check failed: \(error)")
+            relayUpdateAvailable = nil
+        }
+    }
+
+    /// Full update chain: fetch release → SHA-verified download → GATT trigger
+    /// (USB-docked only) → legacy DFU flash → reconnect and confirm version.
+    func startRelayUpdate(for deviceId: UUID) async {
+        guard !relayDfuInProgress else { return }
+        relayDfuInProgress = true
+        relayDfuErrorText = nil
+        relayDfuProgress = 0
+
+        do {
+            relayDfuStateText = "Fetching release…"
+            let update = try await RelayDfuService.shared.latestUpdate()
+
+            relayDfuStateText = "Downloading \(update.version.map { "v\($0)" } ?? "firmware")…"
+            let zip = try await RelayDfuService.shared.downloadVerifiedPackage(update)
+
+            relayDfuStateText = "Rebooting Relay into update mode…"
+            // The post-trigger disconnect is expected — widen the reboot window
+            // so it isn't reported as a connection failure.
+            sessions[deviceId]?.awaitingRebootUntil = Date().addingTimeInterval(30)
+            try await writeRelayDfuTrigger(for: deviceId)
+
+            relayDfuStateText = "Waiting for update mode…"
+            let target = try await waitForRelayBootloader(timeout: 15)
+
+            try await flashRelay(zipURL: zip, target: target)
+
+            relayDfuStateText = "Verifying…"
+            await confirmRelayVersion(deviceId: deviceId, expected: update.manifest.versionByte ?? 0)
+            relayDfuStateText = "Updated to \(update.version.map { "v\($0)" } ?? "latest") ✓"
+            relayUpdateAvailable = false
+        } catch {
+            relayDfuErrorText = error.localizedDescription
+            relayDfuStateText = ""
+        }
+        relayDfuInProgress = false
+    }
+
+    /// Recovery path: an interrupted DFU leaves the bootloader advertising the
+    /// DFU service on every boot. Flash it directly — no trigger needed.
+    func retryRelayFlash(bootloaderId: UUID) async {
+        guard !relayDfuInProgress else { return }
+        relayDfuInProgress = true
+        relayDfuErrorText = nil
+        relayDfuProgress = 0
+
+        do {
+            relayDfuStateText = "Fetching release…"
+            let update = try await RelayDfuService.shared.latestUpdate()
+            relayDfuStateText = "Downloading…"
+            let zip = try await RelayDfuService.shared.downloadVerifiedPackage(update)
+            try await flashRelay(zipURL: zip, target: bootloaderId)
+            relayDfuStateText = "Recovered — flashed \(update.version.map { "v\($0)" } ?? "") ✓"
+        } catch {
+            relayDfuErrorText = error.localizedDescription
+            relayDfuStateText = ""
+        }
+        relayDfuInProgress = false
+    }
+
+    private func writeRelayDfuTrigger(for deviceId: UUID) async throws {
+        guard let ch = dfuTriggerCharacteristicById[deviceId],
+              let peripheral = ch.service?.peripheral else {
+            // Distinct from ATT 0x03: here the connected GATT table doesn't
+            // even contain the trigger characteristic.
+            print("[RelayDFU] ❌ Trigger characteristic was never discovered for \(deviceId)")
+            throw RelayDfuError.triggerUnavailable
+        }
+        print("[RelayDFU] Writing 0xA8 to trigger characteristic…")
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            relayTriggerContinuation = cont
+            peripheral.writeValue(Data([0xA8]), for: ch, type: .withResponse)
+        }
+    }
+
+    private static func mapTriggerError(_ error: Error) -> Error {
+        let ns = error as NSError
+        guard ns.domain == CBATTErrorDomain else { return error }
+        switch ns.code {
+        case 0x03: return RelayDfuError.notDocked                                        // Write Not Permitted
+        case 0x13: return RelayDfuError.triggerRejected("wrong magic byte")              // Value Not Allowed
+        case 0x0D: return RelayDfuError.triggerRejected("payload must be exactly 1 byte") // Invalid Length
+        default:   return RelayDfuError.triggerRejected(ns.localizedDescription)
+        }
+    }
+
+    private func waitForRelayBootloader(timeout: TimeInterval) async throws -> UUID {
+        // Bench assumption: one Relay in DFU mode at a time — a bootloader
+        // already known from a stuck device is just as valid a target.
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if let id = relayBootloaderIds.first { return id }
+            if isPoweredOn, !isScanning { startScan() }
+            try? await Task.sleep(for: .milliseconds(400))
+        }
+        throw RelayDfuError.bootloaderNotFound
+    }
+
+    private func flashRelay(zipURL: URL, target: UUID) async throws {
+        stopScan()   // don't fight the DFU library's own central manager
+        relayDfuStateText = "Flashing…"
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            relayFlasher.onProgress = { [weak self] p in self?.relayDfuProgress = p }
+            relayFlasher.onStateText = { [weak self] t in self?.relayDfuStateText = t }
+            relayFlasher.onFinish = { [weak self] result in
+                self?.relayFlasher.onFinish = nil   // guard against double resume
+                cont.resume(with: result)
+            }
+            do {
+                try relayFlasher.flash(zipURL: zipURL, targetIdentifier: target)
+            } catch {
+                relayFlasher.onFinish = nil
+                cont.resume(throwing: error)
+            }
+        }
+        relayBootloaderIds.removeAll { $0 == target }
+        bootloaderPeripherals[target] = nil
+    }
+
+    /// On completion the bootloader reboots into the new firmware; the device
+    /// is still docked, so it re-enters config mode. Let the existing
+    /// scan/auto-reconnect machinery pick it up, then check the FW byte
+    /// against the manifest. Confirmation failure is a warning, not an error —
+    /// the flash itself already succeeded.
+    private func confirmRelayVersion(deviceId: UUID, expected: UInt8) async {
+        if let s = sessions[deviceId] {
+            s.lastUpgraded = true
+            s.awaitingRebootUntil = Date().addingTimeInterval(60)
+            s.firmwareVersion = nil
+        }
+        let deadline = Date().addingTimeInterval(45)
+        while Date() < deadline {
+            if let byte = firmwareVersionByteById(deviceId) {
+                if byte == expected {
+                    print("[RelayDFU] ✅ Version confirmed: 0x\(String(format: "%02X", byte))")
+                    return
+                }
+                print("[RelayDFU] ⚠️ Version mismatch after flash: got 0x\(String(format: "%02X", byte)) want 0x\(String(format: "%02X", expected))")
+                return
+            }
+            if isPoweredOn, !isScanning { startScan() }
+            try? await Task.sleep(for: .seconds(1))
+        }
+        print("[RelayDFU] ⚠️ Flashed OK but version not confirmed within timeout")
+    }
+
     /// Automatically download and start DFU if update is available
     func autoUpdateIfNeeded(for deviceId: UUID, deviceType: RareBitDeviceType) async throws -> Bool {
         let (needsUpdate, latestVersion) = try await checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
@@ -1067,7 +1253,32 @@ extension BleScanner: CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
+        // Relay bootloader detection — the OTAFIX bootloader advertises the
+        // legacy DFU service under a board-specific name, so match the service,
+        // never the name. These never join the normal device list.
+        let advServices = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? []
+        if advServices.contains(legacyDfuUuids.service) {
+            if !relayBootloaderIds.contains(peripheral.identifier) {
+                print("[RelayDFU] Bootloader advertising: \(peripheral.identifier)")
+                relayBootloaderIds.append(peripheral.identifier)
+            }
+            bootloaderPeripherals[peripheral.identifier] = peripheral
+            return
+        }
+
         guard let advName = advertisementData[CBAdvertisementDataLocalNameKey] as? String, advName.localizedCaseInsensitiveContains("rareBit") else { return }
+
+        // Only list devices meant for this app. Ideal: advertisement carries the
+        // config service UUID. Reality (relay-v1.9): firmware only gates the
+        // GATT table — the docked advertisement carries NO service UUIDs, and
+        // the active one carries only the watch-facing Relay Service.
+        // TEMP: accept empty-adv rareBit devices until firmware advertises the
+        // config UUID while docked; still reject Relay-Service advertisers.
+        let passesServiceFilter = advServices.contains(cfgUuids.service) || advServices.isEmpty
+        guard passesServiceFilter else {
+            print("[BLE] ⏭ Skipped \(advName): not a config-service advertisement (adv=[\(advServices.map(\.uuidString).joined(separator: ", "))])")
+            return
+        }
 
         let nameForFilter = advName
         let rssiValue = RSSI.intValue
@@ -1236,7 +1447,7 @@ extension BleScanner: CBPeripheralDelegate {
         let cfg = peripheral.services?.first(where: { $0.uuid == cfgUuids.service })
         s.hasConfigService = (cfg != nil)
         if let cfgService = cfg {
-            peripheral.discoverCharacteristics([cfgUuids.cfg_characteristic, cfgUuids.fwv_characteristic], for: cfgService)
+            peripheral.discoverCharacteristics([cfgUuids.cfg_characteristic, cfgUuids.fwv_characteristic, cfgUuids.dfu_trigger_characteristic], for: cfgService)
         }
 
         if selectedId == id {
@@ -1293,6 +1504,12 @@ extension BleScanner: CBPeripheralDelegate {
                 peripheral.readValue(for: cfgCh)
 
                 print("[BLE] CFG characteristic ready for \(id)")
+            }
+
+            // DFU trigger characteristic (Relay, USB-docked only)
+            if let trigCh = service.characteristics?.first(where: { $0.uuid == cfgUuids.dfu_trigger_characteristic }) {
+                dfuTriggerCharacteristicById[id] = trigCh
+                print("[RelayDFU] DFU trigger characteristic ready for \(id)")
             }
 
             // FWV characteristic
@@ -1372,7 +1589,20 @@ extension BleScanner: CBPeripheralDelegate {
 
     
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        
+
+        if characteristic.uuid == cfgUuids.dfu_trigger_characteristic {
+            if let error {
+                relayTriggerContinuation?.resume(throwing: Self.mapTriggerError(error))
+            } else {
+                // Write response received — device reboots into the bootloader
+                // ~500 ms from now. The coming disconnect IS the success signal.
+                print("[RelayDFU] Trigger accepted")
+                relayTriggerContinuation?.resume(returning: ())
+            }
+            relayTriggerContinuation = nil
+            return
+        }
+
         guard characteristic.uuid == cfgUuids.cfg_characteristic else { return }
         if let error {
             print("Config write error: \(error.localizedDescription)")

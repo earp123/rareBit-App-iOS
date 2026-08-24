@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		7E3FF94E2F00D55A001A353D /* iOSMcuManagerLibrary in Frameworks */ = {isa = PBXBuildFile; productRef = 7E3FF94D2F00D55A001A353D /* iOSMcuManagerLibrary */; };
+		7E3FF9522F00D55A001A353D /* NordicDFU in Frameworks */ = {isa = PBXBuildFile; productRef = 7E3FF9512F00D55A001A353D /* NordicDFU */; };
 		7E98B7572EFBA5D800F5568E /* Watch Receiver Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7E98B7562EFBA5D800F5568E /* Watch Receiver Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -111,6 +112,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E3FF94E2F00D55A001A353D /* iOSMcuManagerLibrary in Frameworks */,
+				7E3FF9522F00D55A001A353D /* NordicDFU in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -209,6 +211,7 @@
 			name = "Watch Receiver";
 			packageProductDependencies = (
 				7E3FF94D2F00D55A001A353D /* iOSMcuManagerLibrary */,
+				7E3FF9512F00D55A001A353D /* NordicDFU */,
 			);
 			productName = "Watch Receiver";
 			productReference = 7E98B7332EFBA5D800F5568E /* Watch Receiver.app */;
@@ -374,6 +377,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				7E3FF94C2F00D55A001A353D /* XCRemoteSwiftPackageReference "IOS-nRF-Connect-Device-Manager" */,
+				7E3FF9502F00D55A001A353D /* XCRemoteSwiftPackageReference "IOS-DFU-Library" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7E98B7342EFBA5D800F5568E /* Products */;
@@ -634,6 +638,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Watch Receiver Watch App/Watch Receiver Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 742QW9KJUK;
@@ -643,13 +648,15 @@
 				INFOPLIST_KEY_CFBundleDisplayName = rareBit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Needed for communication with rareBit devices. ";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Watch Receiver uses a workout session to keep the timer and Bluetooth connection active during a match.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Watch Receiver uses a workout session to keep the timer and Bluetooth connection active during a match.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "rareBit.Watch-Receiver";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "rareBit.Watch-Receiver.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -661,7 +668,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
-				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Debug;
 		};
@@ -670,6 +677,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Watch Receiver Watch App/Watch Receiver Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 742QW9KJUK;
@@ -679,13 +687,15 @@
 				INFOPLIST_KEY_CFBundleDisplayName = rareBit;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Needed for communication with rareBit devices. ";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Watch Receiver uses a workout session to keep the timer and Bluetooth connection active during a match.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Watch Receiver uses a workout session to keep the timer and Bluetooth connection active during a match.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "rareBit.Watch-Receiver";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "rareBit.Watch-Receiver.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -698,7 +708,7 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				VALIDATE_PRODUCT = YES;
-				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
 			};
 			name = Release;
 		};
@@ -709,7 +719,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 742QW9KJUK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -720,12 +730,12 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "rareBit.Watch-Receiver";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -747,7 +757,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 742QW9KJUK;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -758,12 +768,12 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 2.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "rareBit.Watch-Receiver";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1039,6 +1049,14 @@
 				kind = branch;
 			};
 		};
+		7E3FF9502F00D55A001A353D /* XCRemoteSwiftPackageReference "IOS-DFU-Library" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/NordicSemiconductor/IOS-DFU-Library.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.15.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1046,6 +1064,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 7E3FF94C2F00D55A001A353D /* XCRemoteSwiftPackageReference "IOS-nRF-Connect-Device-Manager" */;
 			productName = iOSMcuManagerLibrary;
+		};
+		7E3FF9512F00D55A001A353D /* NordicDFU */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7E3FF9502F00D55A001A353D /* XCRemoteSwiftPackageReference "IOS-DFU-Library" */;
+			productName = NordicDFU;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

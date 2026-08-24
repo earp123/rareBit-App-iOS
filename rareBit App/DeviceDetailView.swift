@@ -260,11 +260,97 @@ struct DeviceDetailView: View {
                 relayDfuCard
             }
 
+            // MARK: - Relay OTA Card (legacy DFU — Relay only)
+            if deviceType == .relay && isConnectedToThisDevice {
+                relayOtaCard
+            }
+
             Spacer()
 
         }
     }
     
+    // MARK: - Relay OTA Card (legacy DFU)
+
+    private var relayOtaCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "arrow.down.circle.fill")
+                Text("Firmware")
+                    .fontWeight(.semibold)
+                Spacer()
+                if let avail = ble.relayUpdateAvailable {
+                    Text(avail
+                         ? "Update available" + (ble.relayLatestVersion.map { ": v\($0)" } ?? "")
+                         : "Up to date")
+                        .font(.subheadline)
+                        .foregroundStyle(avail ? .green : .secondary)
+                } else {
+                    Text(ble.firmwareVersionById(deviceId).map { "v\($0)" } ?? "—")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Re-check against the release repo (bypasses the session cache)
+                if !ble.relayDfuInProgress {
+                    Button {
+                        Task { await ble.checkRelayUpdate(for: deviceId, forceRefresh: true) }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.subheadline)
+                    }
+                    .buttonStyle(.borderless)
+                }
+            }
+
+            if ble.relayDfuInProgress {
+                ProgressView(value: ble.relayDfuProgress)
+                    .animation(.default, value: ble.relayDfuProgress)
+            }
+
+            if !ble.relayDfuStateText.isEmpty {
+                Text(ble.relayDfuStateText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let err = ble.relayDfuErrorText, !err.isEmpty {
+                Text(err)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            if ble.relayUpdateAvailable == true, !ble.relayDfuInProgress {
+                Button {
+                    Task { await ble.startRelayUpdate(for: deviceId) }
+                } label: {
+                    Text("Install Update")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+        )
+        .task {
+            // FW version byte arrives shortly after connection; wait for it
+            // before the session-cached release check.
+            var attempts = 0
+            while ble.firmwareVersionByteById(deviceId) == nil, attempts < 20 {
+                try? await Task.sleep(for: .milliseconds(250))
+                attempts += 1
+            }
+            await ble.checkRelayUpdate(for: deviceId)
+        }
+    }
+
     // MARK: - Initialization
     
     private func initializeView() {
@@ -278,7 +364,8 @@ struct DeviceDetailView: View {
                 }
                 
                 // Quick check for updates in background if not already done
-                if updateAvailable == nil, deviceType.releaseTag != nil {
+                // (SMP flow — the Relay uses the legacy OTA path instead)
+                if updateAvailable == nil, deviceType.releaseTag != nil, deviceType != .relay {
                     do {
                         let (needsUpdate, latest) = try await ble.checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
                         updateAvailable = needsUpdate
@@ -323,7 +410,8 @@ struct DeviceDetailView: View {
             }
             
             // Check for firmware updates (if applicable)
-            if deviceType.releaseTag != nil {
+            // (SMP flow — the Relay uses the legacy OTA path instead)
+            if deviceType.releaseTag != nil, deviceType != .relay {
                 checkingForUpdate = true
                 do {
                     let (needsUpdate, latest) = try await ble.checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
