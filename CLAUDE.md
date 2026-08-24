@@ -50,16 +50,22 @@ Notes:
 
 ## Trello board policy
 
-Board: **rareBit Flags & Receivers** (workspace: rareBit).
+Board: **rareBit Flags & Receivers** (lists for this repo: `iOS`, `WatchOS`).
+The board is how this project's Claude sessions communicate with Sam, the
+engineer guiding and reviewing day-to-day task completion.
 
-- Lists are platform/domain-scoped — put cards where the work happens:
-  `iOS`, `Android`, `Garmin`, `WatchOS`, `Relay`, `Firmware`,
-  `Flag & Receiver Hardware`.
-- Card descriptions stay **terse**: one or two sentences plus a pointer into
-  the repo (`docs/*.md`, `CHANGELOG.md`) for detail. Don't write long specs
-  into cards.
-- Cross-link related cards with markdown links in an italic `*Note:*` line.
-- Use board labels where they apply (e.g. `Test`).
-- Shipped work is recorded in `CHANGELOG.md`, not as cards; don't create
-  pre-completed cards.
-- Don't archive or delete cards Sam created without asking.
+- **Never create cards or lists.** Sam is the only one who creates them.
+- Work is tracked via **checklists on Sam's cards** — max 5 items per card.
+  Items must primarily follow the flow **"make the change → test it → assess
+  the output"**, phrased in language that fits the card, with an optional
+  **"triage the issue"** step where applicable.
+- Supplemental notes may be appended to a card's description — keep them very
+  brief.
+- **Never apply labels.** Ensure these exist on the board: Low Priority
+  (green), 1 Week Old (yellow), 2 Weeks Old (orange), High Priority (red),
+  Client Directive (purple), Hold (blue).
+- **On every major push and/or merge to any repo in this project**: sweep the
+  board — check off completed checklist items across all cards, and archive
+  cards that are complete.
+- Give a high amount of effort to keeping the board clutter-free, in both
+  information and checklist items.
