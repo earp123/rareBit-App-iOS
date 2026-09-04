@@ -24,29 +24,9 @@ enum RareBitDeviceType: String, CaseIterable {
         return .unknown
     }
 
-    var firmwareResource: (name: String, ext: String)? {
-        switch self {
-        case .proFlag: return ("PRO_FLAG_1v9", "bin")
-        case .proReceiver: return ("PRO_RX_1v9", "bin")
-        case .relay: return ("RELAY_2v0", "bin")
-        case .blink: return ("BLUE_BLINK", "bin")
-        case .unknown: return nil
-        }
-    }
-
-    /// GitHub release tag for this device type's firmware
-    /// These should match your latest GitHub release tags exactly
-    /// Update these when you release new firmware versions
-    /// Current releases: PRO_FLAG_v1.9.0, PRO_RX_v1.8.0, RXRLY_v10.0
-    var releaseTag: String? {
-        switch self {
-        case .proFlag: return "PRO_FLAG_v1.9.0"      // Update when releasing new version
-        case .proReceiver: return "PRO_RX_v1.8.0"    // Update when releasing new version
-        case .relay: return "RXRLY_v10.0"            // Update when releasing new version
-        case .blink: return nil                      // No DFU support
-        case .unknown: return nil
-        }
-    }
+    /// OTA firmware products live in the public rareBit-firmware-releases
+    /// repo, keyed by product tag prefix — see FirmwareProduct /
+    /// FirmwareReleaseService. BLINK has no OTA support.
 
     var displayName: String {
         switch self {

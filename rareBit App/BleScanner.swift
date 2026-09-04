@@ -237,26 +237,41 @@ final class BleScanner: NSObject, ObservableObject {
         return version.asByte
     }
     
-    /// Check if a firmware update is available for this device
+    /// Which SMP-flashed firmware product a device tracks. Receivers running
+    /// relay firmware (major ≥ 10, e.g. 0xA0) track "rxrly"; if the FW byte is
+    /// unreadable (pre-FWV firmware) assume plain product for recovery.
+    func smpFirmwareProduct(for deviceId: UUID, deviceType: RareBitDeviceType) -> FirmwareProduct? {
+        switch deviceType {
+        case .proFlag:
+            return .flag
+        case .proReceiver:
+            if let byte = firmwareVersionByteById(deviceId), (byte >> 4) >= 10 {
+                return .rxrly
+            }
+            return .rx
+        default:
+            return nil   // .relay uses the legacy-DFU flow; .blink/.unknown: no OTA
+        }
+    }
+
+    /// Check if a firmware update is available for this device (SMP products).
     func checkFirmwareUpdate(for deviceId: UUID, deviceType: RareBitDeviceType) async throws -> (needsUpdate: Bool, latestVersion: FirmwareVersion?) {
-        guard let releaseTag = deviceType.releaseTag else {
+        guard let product = smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
             throw FirmwareUpdateError.noReleaseTag
         }
-        
-        guard let versionString = firmwareVersionById(deviceId) else {
+
+        let update = try await FirmwareReleaseService.shared.latestRelease(for: product)
+
+        guard let current = firmwareVersionByteById(deviceId) else {
             // FWV characteristic missing — old firmware that predates it.
             // Assume an update is needed so the device can be recovered.
-            let latest = try await FirmwareService.shared.latestVersion(for: releaseTag)
-            print("📱 FWV unreadable for \(deviceType.displayName) — assuming update needed (latest: \(latest))")
-            return (true, latest)
+            print("📱 FWV unreadable for \(deviceType.displayName) — assuming update needed (latest: \(update.version?.description ?? "?"))")
+            return (true, update.version)
         }
 
-        let current = FirmwareVersion(versionString)
-        let result = try await FirmwareService.shared.checkForUpdate(tag: releaseTag, currentVersion: versionString)
-
-        print("📱 Update check for \(deviceType.displayName): Current=\(current) Latest=\(result.release.tag_name) NeedsUpdate=\(result.needsUpdate)")
-
-        return (result.needsUpdate, FirmwareVersion(result.release.tag_name))
+        let needs = (update.manifest.versionByte ?? 0) > current
+        print("📱 Update check for \(deviceType.displayName) [\(product.rawValue)]: Current=0x\(String(format: "%02X", current)) Latest=\(update.release.tag_name) NeedsUpdate=\(needs)")
+        return (needs, update.version)
     }
     
     // MARK: - Relay legacy OTA DFU (docs/relay-dfu-flow.md) — Relay ONLY.
@@ -270,7 +285,7 @@ final class BleScanner: NSObject, ObservableObject {
             return
         }
         do {
-            let (update, needs) = try await RelayDfuService.shared.updateAvailable(currentVersionByte: current, forceRefresh: forceRefresh)
+            let (update, needs) = try await FirmwareReleaseService.shared.updateAvailable(for: .relay, currentVersionByte: current, forceRefresh: forceRefresh)
             relayUpdateAvailable = needs
             relayLatestVersion = update.version
             print("[RelayDFU] Check: current=0x\(String(format: "%02X", current)) latest=\(update.manifest.fw_version_byte) needsUpdate=\(needs)")
@@ -290,10 +305,10 @@ final class BleScanner: NSObject, ObservableObject {
 
         do {
             relayDfuStateText = "Fetching release…"
-            let update = try await RelayDfuService.shared.latestUpdate()
+            let update = try await FirmwareReleaseService.shared.latestRelease(for: .relay)
 
             relayDfuStateText = "Downloading \(update.version.map { "v\($0)" } ?? "firmware")…"
-            let zip = try await RelayDfuService.shared.downloadVerifiedPackage(update)
+            let zip = try await FirmwareReleaseService.shared.downloadVerifiedPackage(update)
 
             relayDfuStateText = "Rebooting Relay into update mode…"
             // The post-trigger disconnect is expected — widen the reboot window
@@ -327,9 +342,9 @@ final class BleScanner: NSObject, ObservableObject {
 
         do {
             relayDfuStateText = "Fetching release…"
-            let update = try await RelayDfuService.shared.latestUpdate()
+            let update = try await FirmwareReleaseService.shared.latestRelease(for: .relay)
             relayDfuStateText = "Downloading…"
-            let zip = try await RelayDfuService.shared.downloadVerifiedPackage(update)
+            let zip = try await FirmwareReleaseService.shared.downloadVerifiedPackage(update)
             try await flashRelay(zipURL: zip, target: bootloaderId)
             relayDfuStateText = "Recovered — flashed \(update.version.map { "v\($0)" } ?? "") ✓"
         } catch {
@@ -345,7 +360,7 @@ final class BleScanner: NSObject, ObservableObject {
             // Distinct from ATT 0x03: here the connected GATT table doesn't
             // even contain the trigger characteristic.
             print("[RelayDFU] ❌ Trigger characteristic was never discovered for \(deviceId)")
-            throw RelayDfuError.triggerUnavailable
+            throw FirmwareReleaseError.triggerUnavailable
         }
         print("[RelayDFU] Writing 0xA8 to trigger characteristic…")
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
@@ -358,10 +373,10 @@ final class BleScanner: NSObject, ObservableObject {
         let ns = error as NSError
         guard ns.domain == CBATTErrorDomain else { return error }
         switch ns.code {
-        case 0x03: return RelayDfuError.notDocked                                        // Write Not Permitted
-        case 0x13: return RelayDfuError.triggerRejected("wrong magic byte")              // Value Not Allowed
-        case 0x0D: return RelayDfuError.triggerRejected("payload must be exactly 1 byte") // Invalid Length
-        default:   return RelayDfuError.triggerRejected(ns.localizedDescription)
+        case 0x03: return FirmwareReleaseError.notDocked                                        // Write Not Permitted
+        case 0x13: return FirmwareReleaseError.triggerRejected("wrong magic byte")              // Value Not Allowed
+        case 0x0D: return FirmwareReleaseError.triggerRejected("payload must be exactly 1 byte") // Invalid Length
+        default:   return FirmwareReleaseError.triggerRejected(ns.localizedDescription)
         }
     }
 
@@ -374,7 +389,7 @@ final class BleScanner: NSObject, ObservableObject {
             if isPoweredOn, !isScanning { startScan() }
             try? await Task.sleep(for: .milliseconds(400))
         }
-        throw RelayDfuError.bootloaderNotFound
+        throw FirmwareReleaseError.bootloaderNotFound
     }
 
     private func flashRelay(zipURL: URL, target: UUID) async throws {
@@ -436,38 +451,28 @@ final class BleScanner: NSObject, ObservableObject {
             return false
         }
         
-        guard let releaseTag = deviceType.releaseTag else {
+        guard let product = smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
             throw FirmwareUpdateError.noReleaseTag
         }
-        
+
         await MainActor.run {
             dfuErrorText = nil
             dfuStateText = "Update available: \(latestVersion?.description ?? "unknown")"
         }
-        
-        // Fetch and download
-        await MainActor.run {
-            dfuStateText = "Fetching \(releaseTag) release..."
-        }
-        let release = try await FirmwareService.shared.fetchRelease(tag: releaseTag)
-        
-        await MainActor.run {
-            dfuStateText = "Locating firmware asset..."
-        }
-        guard let asset = release.firmwareAsset() else {
-            throw FirmwareUpdateError.noAssetFound
-        }
-        
+
+        // Fetch the verified OTA image (SHA-256 checked against the manifest)
+        let update = try await FirmwareReleaseService.shared.latestRelease(for: product)
+
         await MainActor.run {
             dfuStateText = "Downloading firmware..."
         }
-        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
-        
+        let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
+
         await MainActor.run {
             dfuStateText = "Starting DFU update..."
             startDfuFromURL(for: deviceId, fileURL: fileURL)
         }
-        
+
         return true
     }
 

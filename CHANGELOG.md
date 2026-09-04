@@ -81,8 +81,10 @@ user-assignable per flag from the watch.
 ### iOS ↔ device: DFU (Nordic SMP / McuManager)
 - Service `8D53DC1D-1DB7-4CD3-868B-8A527460AA84`,
   characteristic `DA2E7828-FBCE-4E01-AE9E-261174997C48`
-- Standard MCUboot image upload via `iOSMcuManagerLibrary`; images bundled in
-  the app and fetched from GitHub Release tags per device type.
+- Standard MCUboot image upload via `iOSMcuManagerLibrary`. Firmware for all
+  products comes from the public `rareBit-firmware-releases` repo: releases
+  tagged `<product>-v<version>` (flag / rx / rxrly / relay), each carrying a
+  `manifest.json`; SMP products flash the SHA-256-verified `ota_image` .bin.
 
 ---
 
@@ -103,6 +105,20 @@ user-assignable per flag from the watch.
 ---
 
 ## History
+
+### 2026-09-04 — Unified firmware fetch from the public releases repo (iOS)
+- All products (flag / rx / rxrly / relay) now fetch from
+  `rareBit-firmware-releases`: latest release found by tag prefix (never
+  `/latest`, which is meaningless in a shared repo), `manifest.json` parsed,
+  artifacts SHA-256-verified before flashing. Session-cached per product.
+- SMP products flash the verified `ota_image` .bin over McuManager (transport
+  unchanged); Relay keeps the legacy-DFU zip flow. Receiver cross-grade cards
+  (rx ↔ rxrly) use the same fetch path.
+- Removed: private-repo `FirmwareService` (PAT-authenticated, hardcoded
+  release tags), `releaseTag`/`firmwareResource` accessors, and the orphaned
+  bundled .bin images. The GitHub PAT in `Secrets.swift` is no longer used.
+- Fixed latent bug: the shipped Relay check used `/latest`, which now returns
+  another product's release and would have broken Relay updates.
 
 ### 2026-08-23 — Relay OTA DFU flow (iOS)
 - Implemented per `docs/relay-dfu-flow.md` (firmware side complete, relay-v1.9).

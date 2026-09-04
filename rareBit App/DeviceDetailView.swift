@@ -365,7 +365,7 @@ struct DeviceDetailView: View {
                 
                 // Quick check for updates in background if not already done
                 // (SMP flow — the Relay uses the legacy OTA path instead)
-                if updateAvailable == nil, deviceType.releaseTag != nil, deviceType != .relay {
+                if updateAvailable == nil, deviceType == .proFlag || deviceType == .proReceiver {
                     do {
                         let (needsUpdate, latest) = try await ble.checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
                         updateAvailable = needsUpdate
@@ -411,7 +411,7 @@ struct DeviceDetailView: View {
             
             // Check for firmware updates (if applicable)
             // (SMP flow — the Relay uses the legacy OTA path instead)
-            if deviceType.releaseTag != nil, deviceType != .relay {
+            if deviceType == .proFlag || deviceType == .proReceiver {
                 checkingForUpdate = true
                 do {
                     let (needsUpdate, latest) = try await ble.checkFirmwareUpdate(for: deviceId, deviceType: deviceType)
@@ -522,7 +522,7 @@ struct DeviceDetailView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(updateAvailable == true ? .green : .blue)
-                        .disabled(ble.dfuInProgress || deviceType.releaseTag == nil)
+                        .disabled(ble.dfuInProgress || !(deviceType == .proFlag || deviceType == .proReceiver))
                         
                         // Manual DFU Button
                         Button {
@@ -530,24 +530,18 @@ struct DeviceDetailView: View {
                                 do {
                                     ble.dfuErrorText = nil
 
-                                    guard let tag = deviceType.releaseTag else {
+                                    guard let product = ble.smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
                                         ble.dfuErrorText = "No firmware release for this device type"
                                         return
                                     }
 
-                                    ble.dfuStateText = "Step 1: fetching \(tag) release"
-                                    let release = try await FirmwareService.shared.fetchRelease(tag: tag)
+                                    ble.dfuStateText = "Step 1: fetching latest \(product.rawValue) release"
+                                    let update = try await FirmwareReleaseService.shared.latestRelease(for: product)
 
-                                    ble.dfuStateText = "Step 2: locating asset"
-                                    guard let asset = release.firmwareAsset() else {
-                                        ble.dfuErrorText = "No firmware asset found in \(tag) release"
-                                        return
-                                    }
+                                    ble.dfuStateText = "Step 2: downloading + verifying firmware"
+                                    let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
 
-                                    ble.dfuStateText = "Step 3: downloading firmware"
-                                    let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
-
-                                    ble.dfuStateText = "Step 4: starting DFU"
+                                    ble.dfuStateText = "Step 3: starting DFU"
                                     await MainActor.run {
                                         ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
                                     }
@@ -718,19 +712,13 @@ struct DeviceDetailView: View {
                     do {
                         ble.dfuErrorText = nil
 
-                        ble.dfuStateText = "Step 1: fetching RXRLY_v10.0 release"
-                        let release = try await FirmwareService.shared.fetchRelease(tag: "RXRLY_v10.0")
+                        ble.dfuStateText = "Step 1: fetching latest rxrly release"
+                        let update = try await FirmwareReleaseService.shared.latestRelease(for: .rxrly)
 
-                        ble.dfuStateText = "Step 2: locating asset"
-                        guard let asset = release.firmwareAsset() else {
-                            ble.dfuErrorText = "No firmware asset found in RXRLY_v10.0 release"
-                            return
-                        }
+                        ble.dfuStateText = "Step 2: downloading + verifying firmware"
+                        let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
 
-                        ble.dfuStateText = "Step 3: downloading firmware"
-                        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
-
-                        ble.dfuStateText = "Step 4: starting DFU"
+                        ble.dfuStateText = "Step 3: starting DFU"
                         await MainActor.run {
                             ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
                         }
@@ -787,19 +775,13 @@ struct DeviceDetailView: View {
                     do {
                         ble.dfuErrorText = nil
                         
-                        ble.dfuStateText = "Step 1: fetching PRO_RX_v1.8.0 release"
-                        let release = try await FirmwareService.shared.fetchRelease(tag: "PRO_RX_v1.8.0")
-                        
-                        ble.dfuStateText = "Step 2: locating asset"
-                        guard let asset = release.firmwareAsset() else {
-                            ble.dfuErrorText = "No firmware asset found in PRO_RX_v1.8.0 release"
-                            return
-                        }
-                        
-                        ble.dfuStateText = "Step 3: downloading firmware"
-                        let fileURL = try await FirmwareService.shared.downloadFirmware(from: asset)
-                        
-                        ble.dfuStateText = "Step 4: starting DFU"
+                        ble.dfuStateText = "Step 1: fetching latest rx release"
+                        let update = try await FirmwareReleaseService.shared.latestRelease(for: .rx)
+
+                        ble.dfuStateText = "Step 2: downloading + verifying firmware"
+                        let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
+
+                        ble.dfuStateText = "Step 3: starting DFU"
                         await MainActor.run {
                             ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
                         }
@@ -896,7 +878,7 @@ struct DeviceDetailView: View {
         
         // Hide if explicitly up to date AND device type is known
         // (If device type is unknown, we still want to show DFU for manual updates)
-        if updateAvailable == false && deviceType.releaseTag != nil {
+        if updateAvailable == false && (deviceType == .proFlag || deviceType == .proReceiver) {
             return false
         }
         
