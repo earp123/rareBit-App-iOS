@@ -106,7 +106,16 @@ user-assignable per flag from the watch.
 
 ## History
 
+### 2026-09-04 — Naming convention: "Relay" is the device, RXRLY is the firmware
+- Customer-facing sweep: Receiver surfaces never say "Relay". Receiver
+  firmware is "Receiver"/"RX"; the receiver-as-relay cross-grade firmware is
+  "RXRLY" (card, buttons, alerts, error text). The word "Relay" appears only
+  on surfaces about the Relay device itself.
+
 ### 2026-09-04 — Unified firmware fetch from the public releases repo (iOS)
+- Bench-verified on hardware: two Relays updated v1.9 → v1.10 over the
+  legacy-DFU path (prefix lookup), and an RXRLY receiver reverted to rx-v1.8
+  over SMP with SHA-verified download and correct product re-resolution.
 - All products (flag / rx / rxrly / relay) now fetch from
   `rareBit-firmware-releases`: latest release found by tag prefix (never
   `/latest`, which is meaningless in a shared repo), `manifest.json` parsed,
