@@ -172,7 +172,7 @@ struct DeviceDetailView: View {
             
             discoverySection
             
-            // MARK: - Revert Relay to Receiver Card
+            // MARK: - Revert RXRLY to Receiver Card
             if isReceiverWithRelayFirmware && isConnectedToThisDevice {
                 revertRelayCard
             }
@@ -255,7 +255,7 @@ struct DeviceDetailView: View {
 
             }
 
-            // MARK: - Relay DFU Card (Receiver only)
+            // MARK: - RXRLY Card (Receiver only — flashes RXRLY firmware)
             if deviceType == .proReceiver && isConnectedToThisDevice {
                 relayDfuCard
             }
@@ -641,7 +641,7 @@ struct DeviceDetailView: View {
     }
 
 
-    // MARK: - Relay DFU Card
+    // MARK: - RXRLY Card (receiver cross-grade)
 
     @ViewBuilder
     private var relayDfuCard: some View {
@@ -656,7 +656,7 @@ struct DeviceDetailView: View {
                         .font(.title3)
                         .foregroundStyle(.orange)
 
-                    Text("Relay")
+                    Text("RXRLY")
                         .font(.headline)
                         .foregroundStyle(.primary)
 
@@ -675,7 +675,7 @@ struct DeviceDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Divider().opacity(0.3)
 
-                    Text("Flash Relay firmware to this Receiver. This will replace the current Receiver firmware with Relay firmware.")
+                    Text("Flash RXRLY firmware to this Receiver. This will replace the current Receiver (RX) firmware with RXRLY firmware.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -683,7 +683,7 @@ struct DeviceDetailView: View {
                     Button {
                         showRelayConfirmation = true
                     } label: {
-                        Text("Flash Relay Firmware")
+                        Text("Flash RXRLY Firmware")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -705,7 +705,7 @@ struct DeviceDetailView: View {
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(.orange.opacity(relayCardExpanded ? 0.4 : 0.15), lineWidth: 1)
         )
-        .alert("Flash Relay Firmware?", isPresented: $showRelayConfirmation) {
+        .alert("Flash RXRLY Firmware?", isPresented: $showRelayConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Continue") {
                 Task {
@@ -723,17 +723,17 @@ struct DeviceDetailView: View {
                             ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
                         }
                     } catch {
-                        ble.dfuErrorText = "Relay DFU failed: \(error)"
+                        ble.dfuErrorText = "RXRLY DFU failed: \(error)"
                     }
                 }
             }
         } message: {
-            Text("This requires an Apple Watch. Flashing Relay firmware will replace the Receiver firmware, and the device will no longer vibrate when alerted. Do you want to continue?")
+            Text("This requires an Apple Watch. Flashing RXRLY firmware will replace the Receiver (RX) firmware, and the device will no longer vibrate when alerted. Do you want to continue?")
         }
     }
     
-    // MARK: - Revert Relay to Receiver Card
-    
+    // MARK: - Revert RXRLY to Receiver Card
+
     @ViewBuilder
     private var revertRelayCard: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -742,7 +742,7 @@ struct DeviceDetailView: View {
                     .font(.title3)
                     .foregroundStyle(.orange)
                 
-                Text("Relay Firmware Detected")
+                Text("RXRLY Firmware Detected")
                     .font(.headline)
                     .foregroundStyle(.primary)
                 
@@ -840,8 +840,8 @@ struct DeviceDetailView: View {
         isConnectedToThisDevice && ble.hasConfigService(deviceId)
     }
     
-    /// Determine if this is a Receiver device running Relay firmware
-    /// Relay firmware is major version 10+ (0xA0+)
+    /// Determine if this is a Receiver device running RXRLY firmware
+    /// RXRLY firmware is major version 10+ (0xA0+)
     private var isReceiverWithRelayFirmware: Bool {
         guard deviceType == .proReceiver else { return false }
         guard let versionByte = ble.firmwareVersionByteById(deviceId) else { return false }
