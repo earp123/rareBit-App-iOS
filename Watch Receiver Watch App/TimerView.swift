@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import WatchKit
 
 struct TimerView: View {
     @EnvironmentObject var matchTimer: MatchTimer
@@ -216,6 +217,7 @@ struct TimerView: View {
 
             // Done button — mirrors settings button position
             HStack {
+                countUpThroughPauseToggle
                 Spacer()
                 Button { applyEdit() } label: {
                     Image(systemName: "checkmark")
@@ -276,6 +278,24 @@ struct TimerView: View {
 
     // MARK: - Helpers
 
+    /// Whether the count-up keeps tracking wall-clock time while the
+    /// countdown is paused. Green matches the count-up readout it governs.
+    private var countUpThroughPauseToggle: some View {
+        let on = matchTimer.countUpContinuesWhilePaused
+        return Button {
+            matchTimer.countUpContinuesWhilePaused.toggle()
+            WKInterfaceDevice.current().play(.click)
+        } label: {
+            Image(systemName: on ? "stopwatch.fill" : "stopwatch")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(on ? Color.green : .white.opacity(0.4))
+                .frame(width: 40, height: 40)
+                .background(on ? Color.green.opacity(0.18) : Color.white.opacity(0.12))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private var periodSelector: some View {
         HStack(spacing: 4) {
@@ -297,9 +317,11 @@ struct TimerView: View {
     }
 
     private var elapsedSeconds: TimeInterval {
-        let periodElapsed = max(0, matchTimer.matchDuration - matchTimer.displaySeconds)
-        // 2nd period: count-up starts at matchDuration (e.g. 45:00) and runs up to 90:00
-        return matchTimer.period == 1 ? periodElapsed : matchTimer.matchDuration + periodElapsed
+        // 2nd period: count-up starts at matchDuration (e.g. 45:00) and runs on
+        // from there, so a 45-minute half reads 45:00 → 90:00.
+        matchTimer.period == 1
+            ? matchTimer.elapsedSeconds
+            : matchTimer.matchDuration + matchTimer.elapsedSeconds
     }
 
     private var timeColor: Color {

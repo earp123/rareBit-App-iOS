@@ -28,11 +28,7 @@ struct ContentView: View {
                             .stroke(.white.opacity(0.9), lineWidth: 3)
                     )
                     .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .onTapGesture {
-                        print("BLE ▶︎ connect(to:) called")
-                        relay.connect(to: found.id)
-                        path.append(found)
-                    }
+                    .onTapGesture { openDevice(found) }
 
                 } else {
                     Text("Searching...")
@@ -45,6 +41,9 @@ struct ContentView: View {
             .padding()
             .onAppear { relay.startScan() }
             .onDisappear { relay.stopScan() }
+            .onChange(of: relay.devices.first) { _, found in
+                if let found { openDevice(found) }
+            }
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
                     Button("Playback") {
@@ -64,9 +63,11 @@ struct ContentView: View {
                 .acknowledgesMatchAlarm()
                 .onAppear { workoutManager.startSession() }
                 .onDisappear {
-                    // Keep the session while the timer runs: it's what gives
-                    // background runtime and wrist-raise return-to-app.
-                    if matchTimer.state != .running { workoutManager.stopSession() }
+                    // Keep the session while a match is under way — running or
+                    // paused: it's what gives background runtime, wrist-raise
+                    // return-to-app, and haptics off-screen (the pause
+                    // reminder taps while the countdown sits stopped).
+                    if !matchTimer.isActive { workoutManager.stopSession() }
                 }
             }
             .onChange(of: matchTimer.state) { _, newState in
@@ -87,6 +88,17 @@ struct ContentView: View {
                 .acknowledgesMatchAlarm()
             }
         }
+    }
+
+    /// Connect and open the flag screen. Driven both by a tap on the card and,
+    /// since only one Relay is ever in the field, automatically the moment one
+    /// is discovered — `devices` is RSSI-sorted, so `.first` is the strongest
+    /// advertiser. Arms auto-reconnect rather than doing a bare `connect`, so
+    /// the link comes back on its own after the Relay drops out of range.
+    private func openDevice(_ found: WatchBLEScanner.Device) {
+        guard path.isEmpty, !showPlayback else { return }
+        relay.connectAndStayConnected(to: found.id)
+        path.append(found)
     }
 }
 
