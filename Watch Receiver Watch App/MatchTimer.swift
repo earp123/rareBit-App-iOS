@@ -74,6 +74,24 @@ final class MatchTimer: ObservableObject {
     /// time including stoppages.
     @Published private(set) var elapsedSeconds: TimeInterval = 0
 
+    // MARK: - Stoppage
+
+    /// Total logged delay, closed segments only. The live figure the UI shows
+    /// is `stoppageSeconds`, which adds any segment still open.
+    @Published private(set) var stoppageTotal: TimeInterval = 0
+
+    /// Number of closed segments — how many delays were logged this period.
+    @Published private(set) var stoppageCount: Int = 0
+
+    /// Start of the segment currently being timed, `nil` when none is open.
+    @Published private(set) var stoppageSegmentStart: Date?
+
+    /// `stoppageTotal` plus the open segment, refreshed by the ticker so the
+    /// figure keeps climbing in the always-on dim state.
+    @Published private(set) var stoppageSeconds: TimeInterval = 0
+
+    var isStoppageOpen: Bool { stoppageSegmentStart != nil }
+
     /// True from the moment the interval expires until the user acknowledges it.
     @Published private(set) var isAlarming: Bool = false
 
@@ -154,6 +172,10 @@ final class MatchTimer: ObservableObject {
         countUpAnchor = nil
         frozenCountUp = 0
         elapsedSeconds = 0
+        stoppageSegmentStart = nil
+        stoppageTotal = 0
+        stoppageCount = 0
+        stoppageSeconds = 0
         syncTicker()
     }
 
@@ -202,11 +224,61 @@ final class MatchTimer: ObservableObject {
         syncTicker()
     }
 
+    // MARK: - Stoppage control
+
+    /// Open or close a delay segment. Driven by a tap on a *running* clock
+    /// when the stoppage setting is on — the match clock is never paused by
+    /// it; only a long-press pauses. A delay has a start and an end, so the
+    /// tap toggles and the total is the sum of closed segments.
+    ///
+    /// Ignored unless running: there is nothing to log before kick-off, and a
+    /// paused clock is already logging the stoppage as pause time.
+    func toggleStoppage() {
+        guard state == .running else { return }
+
+        if isStoppageOpen {
+            closeStoppageSegment()
+            // Distinct from both flag presets and the expiry alarm, and far
+            // lighter than either — this only has to confirm the tap landed.
+            WKInterfaceDevice.current().play(.directionDown)
+        } else {
+            stoppageSegmentStart = Date()
+            refreshStoppageSeconds()
+            WKInterfaceDevice.current().play(.click)
+        }
+    }
+
+    /// Fold any open segment into the total. Silent — expiry calls it too,
+    /// and a confirmation tap under a sounding alarm would be pointless.
+    private func closeStoppageSegment() {
+        guard let start = stoppageSegmentStart else { return }
+        stoppageTotal += Date().timeIntervalSince(start)
+        stoppageCount += 1
+        stoppageSegmentStart = nil
+        refreshStoppageSeconds()
+    }
+
+    /// Closes an orphaned segment when the setting is switched off mid-match
+    /// (reachable from the edit screen while paused, with a segment still
+    /// open). Without this the segment would keep counting invisibly.
+    func closeStoppageIfOpen() {
+        guard isStoppageOpen else { return }
+        closeStoppageSegment()
+        syncTicker()   // the open segment may have been the ticker's only job
+    }
+
+    private func refreshStoppageSeconds() {
+        let open = stoppageSegmentStart.map { Date().timeIntervalSince($0) } ?? 0
+        stoppageSeconds = floor(stoppageTotal + open)
+    }
+
     // MARK: - Tick
 
     /// The ticker drives both clocks, so it runs while either is advancing.
     private func syncTicker() {
-        let needed = state == .running || (state == .paused && countUpAnchor != nil)
+        let needed = state == .running
+            || (state == .paused && countUpAnchor != nil)
+            || isStoppageOpen
         if needed { startTicker() } else { stopTicker() }
     }
 
@@ -228,6 +300,8 @@ final class MatchTimer: ObservableObject {
             elapsedSeconds = floor(Date().timeIntervalSince(anchor))
         }
 
+        if isStoppageOpen { refreshStoppageSeconds() }
+
         guard state == .running else { return }
         let elapsed = accumulatedSeconds + Date().timeIntervalSince(runStartDate)
         // ceil() ensures each displayed second lasts a full second.
@@ -239,6 +313,7 @@ final class MatchTimer: ObservableObject {
             state = .finished
             elapsedAnchor = nil
             freezeCountUp()
+            closeStoppageSegment()
             syncTicker()
             startAlarm()
         }
@@ -326,6 +401,7 @@ final class MatchTimer: ObservableObject {
             elapsedAnchor = nil
             state = .finished
             freezeCountUp()
+            closeStoppageSegment()
             syncTicker()
         }
         startAlarm()
