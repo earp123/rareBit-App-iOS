@@ -430,6 +430,14 @@ extension WatchBLEScanner: CBCentralManagerDelegate {
             let msg = error?.localizedDescription ?? "unknown"
             self.connectionError = msg
             self.log("❌ FAILED TO CONNECT: \(peripheral.name ?? "Unknown") id=\(peripheral.identifier) error=\(msg)")
+
+            // Only `didDisconnectPeripheral` used to retry, so a connect that
+            // never landed left the detail screen stuck on "Connecting…" with
+            // no back button. Auto-connect makes that path far easier to hit.
+            if self.shouldAutoReconnect, self.reconnectTargetID != nil {
+                self.log("🔁 Connect failed — retrying via reconnect scan…")
+                self.beginReconnectScan()
+            }
         }
     }
     

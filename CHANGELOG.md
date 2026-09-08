@@ -28,17 +28,24 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
 - **`WatchBLEScanner`** — CoreBluetooth central. Filters scan results by name
   (all of `["rareBit", "Relay"]`) AND advertised service; connects to the
   Relay, subscribes to the notify characteristic, plays per-flag haptic
-  presets on alerts, auto-reconnects once armed.
-- **`MatchTimer`** — match interval countdown (≤45:00, 2 periods). Owns the
-  expiry alarm: a scheduled smart-alarm `WKExtendedRuntimeSession`
-  (`SmartAlarmSession`) buzzes from the background until acknowledged, with an
-  in-process haptic loop as foreground fallback and a 5-minute auto-silence cap.
+  presets on alerts, auto-reconnects once armed — including after a connect
+  that never lands, not just after a disconnect.
+- **`MatchTimer`** — match interval countdown (≤45:00, 2 periods) plus an
+  independently-anchored count-up, so a stoppage can freeze the countdown
+  while the count-up keeps tracking wall-clock time. Owns the expiry alarm: a
+  scheduled smart-alarm `WKExtendedRuntimeSession` (`SmartAlarmSession`)
+  buzzes from the background until acknowledged, with an in-process haptic
+  loop as foreground fallback and a 5-minute auto-silence cap. Also owns the
+  paused-state reminder (triple `.notification` every 20s, 30-minute cap).
 - **`WorkoutManager`** — `HKWorkoutSession` wrapper. An active session gives
   background runtime (BLE + timer keep running) and makes wrist-raise return
   to the app instead of the watch face. Runs whenever a device is connected,
-  playback is open, or the timer is running.
+  playback is open, or a match is under way — including while paused, which
+  is what lets the pause reminder tap off-screen.
 - **`TimerView`** — countdown UI; ticker-driven text (stays populated in the
-  always-on dim state), full-screen TAP-TO-STOP alarm state on expiry.
+  always-on dim state), full-screen TAP-TO-STOP alarm state on expiry. The
+  edit screen carries the duration, period, and the count-up-through-pause
+  toggle (stopwatch glyph, bottom-left).
 - Background modes (`Watch-Receiver-Watch-App-Info.plist`):
   `workout-processing`, `alarm`, `bluetooth-alert`.
 
@@ -94,17 +101,63 @@ user-assignable per flag from the watch.
   overlay (2nd period counts 45:00→90:00), crown-editable duration,
   tap start/pause, reset. Timer stays visible wrist-up and wrist-down
   (always-on display), and the app returns on wrist raise while running.
+- **Stoppage handling** (watch): pausing stops the countdown while the
+  count-up runs on through the stoppage, so it reads total elapsed time
+  including stoppages (toggle in the edit screen; off = both clocks freeze).
+  A triple tap every 20 seconds reminds the wrist that the countdown is
+  still paused.
 - **Expiry alarm** (watch): near-continuous heavy haptics from foreground or
   background until acknowledged by a screen tap anywhere; dedicated full-screen
   acknowledge UI; 5-minute auto-silence safety cap.
 - **Flag alerts** (watch): Relay pushes flag events; per-flag assignable haptic
   presets with playback testing; link-status display for both flags.
+- **Auto-connect** (watch): the first Relay to pass the scan filters is
+  connected and opened straight to the flag screen, no tap needed. Assumes a
+  single Relay in the field; with more than one it takes the strongest
+  advertiser. The card stays tappable as the manual path.
 - **Device management** (iOS): scan/connect multiple rareBit devices, battery
   and firmware readout, short-press configuration, OTA firmware update (DFU).
 
 ---
 
 ## History
+
+### 2026-09-04 — Auto-connect to the Relay on discovery (watch)
+- Discovering a Relay now connects and pushes the flag screen automatically;
+  previously it sat on a card waiting for a tap. Single-Relay assumption per
+  Sam; `devices` is RSSI-sorted so `.first` is the strongest advertiser if
+  that ever stops holding. Tapping the card still works.
+- Both paths now go through `connectAndStayConnected`, which fixes a latent
+  bug: the tap called the bare `connect`, so `isConnecting` was already true
+  by the time `DeviceDetailView.onAppear` ran its
+  `!isConnected && !isConnecting` guard — auto-reconnect was never armed from
+  the tap path at all.
+- `didFailToConnect` now retries via the reconnect scan when armed. Only
+  `didDisconnectPeripheral` used to, so a connect that never landed stranded
+  the detail screen on "Connecting…" with no back button — a path
+  auto-connect makes far easier to hit.
+
+### 2026-09-04 — Stoppage-time count-up and paused-countdown reminder (watch)
+- The count-up now runs off its own anchor instead of being derived from the
+  countdown, so pausing can stop one clock and not the other. After a
+  stoppage the count-up leads the countdown's elapsed time by the time
+  paused, and can exceed the match duration — that's the intent: it reads
+  total elapsed time, stoppages included.
+- Toggle `countUpContinuesWhilePaused` (stopwatch glyph, bottom-left of the
+  edit screen, `UserDefaults`-persisted, default on). Off restores the old
+  behaviour where both clocks freeze together. Toggling while paused takes
+  effect on the stoppage already in progress.
+- Paused-countdown reminder: three `.notification` taps 300ms apart — the
+  closest WatchKit gets to a triple tap — repeating every 20s, first fired
+  one full interval after the pause. Capped at 30 minutes so a watch left
+  paused on the bench doesn't tap all night. Started on `.click`, the
+  lightest haptic, and it was unnoticeable on the wrist; `.notification` is
+  the strongest available, so rhythm rather than weight is what keeps the
+  reminder distinct from the flag presets and the expiry alarm — a tight
+  burst of exactly three against a slow pair and a continuous buzz.
+- The workout session now survives a pause (`MatchTimer.isActive`), which is
+  what lets the reminder tap while the app is off-screen; previously
+  navigating away from a paused timer killed it.
 
 ### 2026-09-04 — Naming convention: "Relay" is the device, RXRLY is the firmware
 - Customer-facing sweep: Receiver surfaces never say "Relay". Receiver
