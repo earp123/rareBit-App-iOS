@@ -143,6 +143,8 @@ final class BleScanner: NSObject, ObservableObject {
     @Published var config: DeviceConfig?
     @Published var firmwareVersion: String?
     @Published private(set) var batteryLevelById: [UUID: BatteryLevel] = [:]
+    /// Absent = the device has no diagnostic characteristic (legacy, or Relay).
+    @Published private(set) var battDiagById: [UUID: BatteryDiag] = [:]
 
     
     @Published private(set) var configByteById: [UUID: UInt8] = [:]
@@ -209,6 +211,7 @@ final class BleScanner: NSObject, ObservableObject {
     private var cfgCharacteristicById: [UUID: CBCharacteristic] = [:]
     private var fwvCharacteristicById: [UUID: CBCharacteristic] = [:]
     private var dfuTriggerCharacteristicById: [UUID: CBCharacteristic] = [:]
+    private var battDiagCharacteristicById: [UUID: CBCharacteristic] = [:]
 
 
     override init() {
@@ -524,10 +527,34 @@ final class BleScanner: NSObject, ObservableObject {
         case mid = "BATTERY_MID"
         case high = "BATTERY_HIGH"
         case full = "BATTERY_FULL"
+        /// The ADC read failed — the graded level means nothing.
+        case unavailable = "BATTERY_UNAVAILABLE"
+        /// Firmware flagged the sense divider itself as faulty.
+        case senseFault = "BATTERY_SENSE_FAULT"
     }
 
+    /// Straight from the CFG byte's bits 7-6. Never returns `.unavailable` or
+    /// `.senseFault` — those only exist once the diagnostic characteristic has
+    /// been read. Config writes keep deriving from this, unchanged.
     func batteryLevel(for id: UUID) -> BatteryLevel {
         batteryLevelById[id] ?? .unknown
+    }
+
+    func batteryDiag(for id: UUID) -> BatteryDiag? {
+        battDiagById[id]
+    }
+
+    /// What the UI should show. The CFG byte's battery bits have no "unknown"
+    /// value, so a unit whose ADC read fails — or whose sense divider is the
+    /// wrong part — reports LOW forever and earns a red glow that is not true.
+    /// Where the diagnostic characteristic exists it says what was actually
+    /// measured, which is what lets a faulted unit stop being called a flat
+    /// one. Legacy units and the Relay have no diag and are unaffected.
+    func effectiveBatteryLevel(for id: UUID) -> BatteryLevel {
+        guard let diag = battDiagById[id] else { return batteryLevel(for: id) }
+        if diag.senseFault { return .senseFault }
+        if diag.mv == -1 || diag.errno != 0 { return .unavailable }
+        return batteryLevel(for: id)
     }
     
     func configByte(for id: UUID) -> UInt8? {
@@ -539,6 +566,63 @@ final class BleScanner: NSObject, ObservableObject {
         return DeviceConfig(byte: b)
     }
 
+
+    //MARK: BatteryDiag
+
+    /// Battery telemetry from the CFG service's diagnostic characteristic.
+    /// Display-only: nothing here feeds a config write.
+    struct BatteryDiag {
+        /// Raw ADC counts.
+        let raw: Int16
+        /// Millivolts at the divider tap. `-1` means the read failed.
+        let mv: Int16
+        /// errno from the last attempt; 0 = OK.
+        let errno: Int16
+        /// Graded level — the same value the CFG byte's bits 7-6 carry.
+        let level: BatteryLevel
+        let docked: Bool
+        let statHigh: Bool
+        let senseFault: Bool
+        /// Raw flags byte, kept for the log line.
+        let flags: UInt8
+        /// Sample counter, wraps.
+        let count: UInt8
+
+        /// 9 bytes little-endian. Anything shorter isn't this characteristic.
+        init?(data: Data) {
+            guard data.count >= 9 else { return nil }
+            let b = [UInt8](data)
+            func i16(_ i: Int) -> Int16 {
+                Int16(bitPattern: UInt16(b[i]) | (UInt16(b[i + 1]) << 8))
+            }
+            raw = i16(0)
+            mv = i16(2)
+            errno = i16(4)
+            switch b[6] {
+            case 0:  level = .low
+            case 1:  level = .mid
+            case 2:  level = .high
+            default: level = .full
+            }
+            flags = b[7]
+            docked = (b[7] & 0b0000_0001) != 0
+            statHigh = (b[7] & 0b0000_0010) != 0
+            senseFault = (b[7] & 0b0000_0100) != 0
+            count = b[8]
+        }
+
+        /// One line for the detail screen, e.g. `1043 mV - errno 0 - docked -
+        /// STAT high - #37`.
+        var summary: String {
+            var parts: [String] = [mv == -1 ? "read failed" : "\(mv) mV"]
+            parts.append("errno \(errno)")
+            if docked { parts.append("docked") }
+            if statHigh { parts.append("STAT high") }
+            if senseFault { parts.append("sense fault") }
+            parts.append("#\(count)")
+            return parts.joined(separator: " \u{00B7} ")
+        }
+    }
 
     //MARK: DeviceConfig
     struct DeviceConfig {
@@ -1381,8 +1465,10 @@ extension BleScanner: CBCentralManagerDelegate {
         connectedDeviceIDs.remove(id)
 
         batteryLevelById.removeValue(forKey: id)
+        battDiagById.removeValue(forKey: id)
         cfgCharacteristicById.removeValue(forKey: id)
         fwvCharacteristicById.removeValue(forKey: id)
+        battDiagCharacteristicById.removeValue(forKey: id)
 
         s.cfgCharacteristic = nil
         s.fwvCharacteristic = nil
@@ -1452,7 +1538,7 @@ extension BleScanner: CBPeripheralDelegate {
         let cfg = peripheral.services?.first(where: { $0.uuid == cfgUuids.service })
         s.hasConfigService = (cfg != nil)
         if let cfgService = cfg {
-            peripheral.discoverCharacteristics([cfgUuids.cfg_characteristic, cfgUuids.fwv_characteristic, cfgUuids.dfu_trigger_characteristic], for: cfgService)
+            peripheral.discoverCharacteristics([cfgUuids.cfg_characteristic, cfgUuids.fwv_characteristic, cfgUuids.dfu_trigger_characteristic, cfgUuids.batt_diag_characteristic], for: cfgService)
         }
 
         if selectedId == id {
@@ -1509,6 +1595,15 @@ extension BleScanner: CBPeripheralDelegate {
                 peripheral.readValue(for: cfgCh)
 
                 print("[BLE] CFG characteristic ready for \(id)")
+            }
+
+            // Battery diagnostic (Flag / Receiver >= 2.0). Read after the CFG
+            // read so the graded level is already in hand when it lands.
+            // Read-only, no notify — every refresh is an explicit read.
+            if let diagCh = service.characteristics?.first(where: { $0.uuid == cfgUuids.batt_diag_characteristic }) {
+                battDiagCharacteristicById[id] = diagCh
+                peripheral.readValue(for: diagCh)
+                print("[BLE] BATT diagnostic characteristic ready for \(id)")
             }
 
             // DFU trigger characteristic (Relay, USB-docked only)
@@ -1568,6 +1663,28 @@ extension BleScanner: CBPeripheralDelegate {
             batteryLevelById[id] = cfg.batteryLevel
 
             print("[BLE] CFG(\(id)) =0x\(String(format: "%02X", byte)) SHPrs=\(cfg.shortPressEnabled) Delay=\((Int(cfg.shortPressDelay) * 20)) Batt=\(cfg.batteryLevel.rawValue)")
+
+            // The battery bits just changed, so the diagnostic behind them is
+            // stale. No in-flight guard needed — CoreBluetooth queues GATT ops.
+            if let diagCh = battDiagCharacteristicById[id] {
+                peripheral.readValue(for: diagCh)
+            }
+
+            if selectedId == id {
+                syncSelectedUIFromSession()
+            }
+            return
+        }
+
+        if characteristic.uuid == cfgUuids.batt_diag_characteristic {
+            guard let diag = BatteryDiag(data: data) else {
+                print("[BLE] BATT(\(id)) malformed payload (\(data.count) bytes)")
+                return
+            }
+
+            battDiagById[id] = diag
+
+            print("[BLE] BATT(\(id)) mv=\(diag.mv) err=\(diag.errno) lvl=\(diag.level.rawValue) flags=0x\(String(format: "%02X", diag.flags)) n=\(diag.count)")
 
             if selectedId == id {
                 syncSelectedUIFromSession()

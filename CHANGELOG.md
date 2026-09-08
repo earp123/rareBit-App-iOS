@@ -14,7 +14,8 @@ Relay, BLINK RED — exact-name matched in `RareBitFirmware.swift`).
 
 - **`BleScanner`** — CoreBluetooth central. Scans for `rareBit`-named devices,
   handles multi-device connections, reads/writes the CFG service, tracks
-  per-device battery level and firmware version.
+  per-device battery level and firmware version, and reads the battery
+  diagnostic characteristic where firmware exposes it.
 - **`FirmwareService` / DFU** — firmware updates over Nordic SMP (McuManager)
   using bundled `.bin` images and GitHub Releases as the update source.
 - **`ScanListView` / `DeviceDetailView`** — device list and per-device
@@ -86,6 +87,19 @@ user-assignable per flag from the watch.
 
 - FWV characteristic `23220003-…` — firmware version byte: high nibble major,
   low nibble minor (e.g. `0x20` → 2.0).
+- Battery diagnostic characteristic `23220005-…` — read-only, no notify,
+  9 bytes little-endian. **Flag / Receiver ≥ 2.0 only**; absent on fielded
+  1.9 / 1.8 / 10.0 and on the Relay, whose ADC is still a stub. Absence is
+  the normal case and changes nothing:
+
+| Bytes | Meaning |
+|-------|---------|
+| 0–1 | Raw ADC counts (int16) |
+| 2–3 | Millivolts at the divider tap (int16); `-1` (`0xFFFF`) = read failed |
+| 4–5 | errno from the last attempt (int16); `0` = OK |
+| 6 | Graded level `0` low, `1` mid, `2` high, `3` full (same value as CFG bits 7–6) |
+| 7 | bit0 USB docked · bit1 charger STAT high · bit2 sense fault |
+| 8 | Sample counter, wraps |
 
 ### iOS ↔ device: DFU (Nordic SMP / McuManager)
 - Service `8D53DC1D-1DB7-4CD3-868B-8A527460AA84`,
@@ -129,6 +143,38 @@ user-assignable per flag from the watch.
 ---
 
 ## History
+
+### 2026-09-08 — Battery read failures and sense faults are no longer shown as "flat" (iOS)
+- The CFG byte's battery bits (7–6) have no "unknown" value, so a unit whose
+  ADC read fails — or whose sense divider is the wrong part, a 680R-for-68k1
+  batch was confirmed on the bench — reports **LOW forever** and earns a red
+  glow that isn't true. Firmware 2.0 exposes what it actually measured on a
+  new read-only diagnostic characteristic (`23220005-…`, 9 bytes LE), so the
+  app can stop calling a faulted unit a flat one.
+- Two new `BatteryLevel` cases, `.unavailable` and `.senseFault`, and a new
+  `effectiveBatteryLevel(for:)` with precedence: sense fault wins, then
+  `mv == -1 || errno != 0` → unavailable, else the CFG bits as before. No
+  diag (legacy units, Relay) falls straight through to the old path.
+- **`DeviceConfig` and `BatteryLevel`-from-byte are untouched.** The CFG write
+  base and the config re-apply cache keep deriving from the CFG byte exactly
+  as before — the diagnostic is display-only and issues no writes.
+- UI: the Battery label and the detail-screen glow read the effective level;
+  both fault cases reuse the existing unknown yellow rather than adding a
+  colour, since "don't trust this" is what yellow already means here. The
+  glow's visibility gate moved to the same source so it can't disagree with
+  the colour. A "Battery diagnostic" line (`1043 mV · errno 0 · docked · STAT
+  high · #37`) appears in the expandable info area only when the
+  characteristic is present.
+- Read on discovery after the CFG read, and re-read on every CFG notification
+  since the battery bits changing makes the diagnostic behind them stale. No
+  in-flight guard — CoreBluetooth queues GATT ops.
+- Known gap: `ScanListView`'s border still derives from the CFG byte, so a
+  faulted unit reads red in the scan list until that call site moves to
+  `effectiveBatteryLevel(for:)`. Out of the task's stated scope; the switch
+  there gained the two cases for exhaustiveness only.
+- Firmware caveat recorded, not acted on: STAT high also reads high when
+  nothing drives the pin, so sense fault is only unambiguous undocked. The app
+  only ever sees a docked device and does no extra inference.
 
 ### 2026-09-07 — Stoppage log: tap tracks delays without stopping the clock (watch)
 - Per Sam's directive: as an **optional setting**, a tap on a running match
