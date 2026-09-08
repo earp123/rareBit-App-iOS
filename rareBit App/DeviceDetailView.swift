@@ -140,7 +140,9 @@ struct DeviceDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
                 if isConnectedToThisDevice {
-                    let level = ble.batteryLevel(for: deviceId)
+                    // Same source as batteryGlowColor, so the gate and the
+                    // colour can't disagree about a faulted unit.
+                    let level = ble.effectiveBatteryLevel(for: deviceId)
 
                     if level != .unknown {
                         let glow = batteryGlowColor
@@ -216,6 +218,22 @@ struct DeviceDetailView: View {
                                 Text("Red <25% · Blue 25–75% · Cyan >75% · Green 100%")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
+                            }
+
+                            // Only on firmware >= 2.0; absent everywhere else,
+                            // which is the normal case for now.
+                            if let diag = ble.batteryDiag(for: deviceId) {
+                                Divider().opacity(0.35)
+
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Battery diagnostic")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+
+                                    Text(diag.summary)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                         .padding(.top, 6)
@@ -589,7 +607,11 @@ struct DeviceDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
-                    Text(cfg.batteryLevel.rawValue.replacingOccurrences(of: "BATTERY_", with: ""))
+                    // Effective, not `cfg.batteryLevel`: a faulted unit's CFG
+                    // bits read LOW and would otherwise be shown as flat.
+                    Text(ble.effectiveBatteryLevel(for: deviceId).rawValue
+                        .replacingOccurrences(of: "BATTERY_", with: "")
+                        .replacingOccurrences(of: "_", with: " "))
                         .font(.subheadline)
                         .bold()
                 }
@@ -822,12 +844,15 @@ struct DeviceDetailView: View {
     
     
     private var batteryGlowColor: Color {
-        switch ble.batteryLevel(for: deviceId) {
+        switch ble.effectiveBatteryLevel(for: deviceId) {
         case .full: return .green
         case .high: return .cyan
         case .mid:  return .blue
         case .low:  return .red
-        case .unknown: return .yellow
+        // Both fault cases reuse the existing unknown colour rather than
+        // introducing a new one — the point is "don't trust this", which is
+        // what yellow already means here.
+        case .unknown, .unavailable, .senseFault: return .yellow
         }
     }
 

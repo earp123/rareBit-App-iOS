@@ -234,7 +234,11 @@ struct ScanListView: View {
         case .high: return .cyan
         case .mid:  return .blue
         case .low:  return .red
-        case .unknown: return .yellow
+        // `batteryLevel(for:)` never returns the two diagnostic cases — these
+        // are here for exhaustiveness. This border still derives from the CFG
+        // byte, so a faulted unit reads red here; pointing it at
+        // `effectiveBatteryLevel(for:)` is a one-line follow-up.
+        case .unknown, .unavailable, .senseFault: return .yellow
         }
     }
 

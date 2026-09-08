@@ -21,6 +21,12 @@ enum cfgUuids {
     /// Relay only, advertised while USB-docked. Write 0xA8 to reboot into the
     /// legacy-DFU bootloader (~500ms after the write response).
     static let dfu_trigger_characteristic = CBUUID(string: "23220004-38d5-4b7b-bad0-7dee1eee1b6d")
+    /// Flag / Receiver >= 2.0 only. Read-only, 9 bytes little-endian: what the
+    /// ADC actually measured, so a unit whose read failed can be told apart
+    /// from a flat one. Absent on fielded 1.9 / 1.8 / 10.0 and on the Relay
+    /// (its ADC is still a stub) — absence is the normal case and changes
+    /// nothing.
+    static let batt_diag_characteristic = CBUUID(string: "23220005-38d5-4b7b-bad0-7dee1eee1b6d")
 }
 
 enum legacyDfuUuids {
