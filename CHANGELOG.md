@@ -36,7 +36,9 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
   scheduled smart-alarm `WKExtendedRuntimeSession` (`SmartAlarmSession`)
   buzzes from the background until acknowledged, with an in-process haptic
   loop as foreground fallback and a 5-minute auto-silence cap. Also owns the
-  paused-state reminder (triple `.notification` every 20s, 30-minute cap).
+  paused-state reminder (triple `.notification` every 20s, 30-minute cap) and
+  the stoppage log — opened/closed delay segments summing to `stoppageTotal`,
+  closed automatically on expiry.
 - **`WorkoutManager`** — `HKWorkoutSession` wrapper. An active session gives
   background runtime (BLE + timer keep running) and makes wrist-raise return
   to the app instead of the watch face. Runs whenever a device is connected,
@@ -44,8 +46,8 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
   is what lets the pause reminder tap off-screen.
 - **`TimerView`** — countdown UI; ticker-driven text (stays populated in the
   always-on dim state), full-screen TAP-TO-STOP alarm state on expiry. The
-  edit screen carries the duration, period, and the count-up-through-pause
-  toggle (stopwatch glyph, bottom-left).
+  edit screen carries the duration, period, the count-up-through-pause
+  toggle (stopwatch glyph, bottom-left) and the Stoppage capsule (top-right).
 - Background modes (`Watch-Receiver-Watch-App-Info.plist`):
   `workout-processing`, `alarm`, `bluetooth-alert`.
 
@@ -99,13 +101,19 @@ user-assignable per flag from the watch.
 
 - **Match timer** (watch): ≤45-minute countdown, 1st/2nd period count-up
   overlay (2nd period counts 45:00→90:00), crown-editable duration,
-  tap start/pause, reset. Timer stays visible wrist-up and wrist-down
+  tap start/pause (long-press instead when the Stoppage setting is on), reset. Timer stays visible wrist-up and wrist-down
   (always-on display), and the app returns on wrist raise while running.
-- **Stoppage handling** (watch): pausing stops the countdown while the
-  count-up runs on through the stoppage, so it reads total elapsed time
-  including stoppages (toggle in the edit screen; off = both clocks freeze).
-  A triple tap every 20 seconds reminds the wrist that the countdown is
-  still paused.
+- **Count-up through stoppages** (watch): pausing stops the countdown while
+  the count-up runs on through the stoppage, so it reads total elapsed time
+  including stoppages (stopwatch toggle in the edit screen; off = both clocks
+  freeze). A triple tap every 20 seconds reminds the wrist that the countdown
+  is still paused.
+- **Stoppage log** (watch, opt-in, off by default): with the Stoppage setting
+  on, a tap on a *running* clock no longer pauses — it opens a delay segment,
+  and the next tap closes it. Injuries, VAR and substitutions get logged as an
+  orange `+MM:SS` running total under the count-up while the match clock keeps
+  going; pause moves to a long-press. A distinct setting from the count-up
+  overlay above, which is unaffected.
 - **Expiry alarm** (watch): near-continuous heavy haptics from foreground or
   background until acknowledged by a screen tap anywhere; dedicated full-screen
   acknowledge UI; 5-minute auto-silence safety cap.
@@ -121,6 +129,65 @@ user-assignable per flag from the watch.
 ---
 
 ## History
+
+### 2026-09-07 — Stoppage log: tap tracks delays without stopping the clock (watch)
+- Per Sam's directive: as an **optional setting**, a tap on a running match
+  timer must not pause anything. `stoppageTapEnabled` (`@AppStorage`, default
+  **off**) rewires the tap to open/close a delay segment instead, so injury,
+  VAR and substitution time can be logged while the match clock runs on.
+- **Distinct from the count-up overlay.** The green elapsed/period readout and
+  its count-up-through-pause toggle are untouched by this — they answer "how
+  much wall-clock has passed", the orange line answers "how much of it was
+  delay". Both can be on at once; the two toggles sit at opposite corners of
+  the edit screen and are separately persisted.
+- Tap **toggles** rather than only ever opening: a delay has a start and an
+  end, and `stoppageTotal` is the sum of closed segments (`stoppageCount`
+  tracks how many). Segments can only be opened while `.running` — there is
+  nothing to log before kick-off, and a paused clock is already logging the
+  stoppage as pause time.
+- **Pause moves to a long-press (0.6 s)** while the setting is on — the only
+  way to pause in that mode. The discoverability cost is real, so the edit
+  screen carries a "Tap logs delay · Hold pauses" hint under the toggle
+  whenever it's on. With the setting off the gesture map is completely
+  unchanged, long-press included.
+- Display: second readout under the green count-up, orange `+MM:SS`,
+  prefixed with `●` while a segment is open so "counting now" reads
+  differently from "counted earlier". Driven by the existing 0.5 s ticker
+  rather than a `Text(timerInterval:)`, so it survives the always-on dim
+  state; `syncTicker()` now also keeps the ticker alive for an open segment,
+  which is what makes a segment left open across a long-press pause keep
+  counting.
+- Both readouts were an `.overlay` on the countdown, and overlays swallow hit
+  tests — so a tap landing on the numerals themselves never reached the clock.
+  Now `.allowsHitTesting(false)`, making the whole screen one tap zone in
+  fact rather than just in intent. Pre-existing bug, not introduced here.
+- Timer screen relaid out around the new readout (Sam, on-wrist): reset and
+  settings moved into a single top bar with the readouts centred between
+  them, which frees the entire lower screen for the countdown, now anchored
+  to the bottom edge with 2pt of padding. Two things had been keeping it
+  visually centred — the button row's clearance, and ~20pt of descender space
+  the rounded face reserves under the digits regardless of alignment.
+  Readouts stayed at 24/18pt: the slot between the two buttons is only ~90pt
+  wide and the stoppage line already fills ~77pt of it, so a size bump pushed
+  the buttons apart. Sizing up would mean giving the readouts their own row.
+- Edit screen: the up/down chevrons are gone — the crown is the only way to
+  set the digits now. That freed the middle of the top row, which is what
+  lets the period selector and the Stoppage capsule share it without
+  colliding.
+- Expiry closes an open segment into the total on both paths — the in-app
+  `tick()` and `alarmSessionDidFire()`, which is what runs when the app was
+  suspended through expiry. Silent in both cases: a confirmation haptic under
+  a sounding alarm would be pointless. Alarm tap-to-stop is untouched and
+  still takes priority over everything.
+- Haptics are deliberately slight — `.click` on open, `.directionDown` on
+  close — to confirm the tap landed without looking, and to stay far away
+  from both the flag presets and the expiry alarm.
+- `reset()` clears the total, count and any open segment; switching period
+  does not (the second half normally follows a reset anyway). Turning the
+  setting off closes an open segment first, so it can't keep counting
+  invisibly from behind a hidden readout.
+- Not in scope: persisting totals across launches, per-segment history, and
+  any iOS-companion surface.
 
 ### 2026-09-04 — Auto-connect to the Relay on discovery (watch)
 - Discovering a Relay now connects and pushes the flag screen automatically;
