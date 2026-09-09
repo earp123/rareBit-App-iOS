@@ -177,6 +177,10 @@ final class BleScanner: NSObject, ObservableObject {
     @Published var config: DeviceConfig?
     @Published var firmwareVersion: String?
     @Published private(set) var batteryLevelById: [UUID: BatteryLevel] = [:]
+    /// Whether a newer stable release exists, by version byte. Populated by
+    /// `checkFirmwareUpdate`; absent until a check has run for that device.
+    @Published private(set) var updateAvailableById: [UUID: Bool] = [:]
+
     /// Absent = the device has no diagnostic characteristic (legacy, or Relay).
     @Published private(set) var battDiagById: [UUID: BatteryDiag] = [:]
 
@@ -303,10 +307,12 @@ final class BleScanner: NSObject, ObservableObject {
             // FWV characteristic missing — old firmware that predates it.
             // Assume an update is needed so the device can be recovered.
             print("📱 FWV unreadable for \(deviceType.displayName) — assuming update needed (latest: \(update.version?.description ?? "?"))")
+            updateAvailableById[deviceId] = true
             return (true, update.version)
         }
 
         let needs = (update.manifest.versionByte ?? 0) > current
+        updateAvailableById[deviceId] = needs
         print("📱 Update check for \(deviceType.displayName) [\(product.rawValue)]: Current=0x\(String(format: "%02X", current)) Latest=\(update.release.tag_name) NeedsUpdate=\(needs)")
         return (needs, update.version)
     }
@@ -1500,6 +1506,7 @@ extension BleScanner: CBCentralManagerDelegate {
 
         batteryLevelById.removeValue(forKey: id)
         battDiagById.removeValue(forKey: id)
+        updateAvailableById.removeValue(forKey: id)
 #if DEBUG
         clearDevRelease()
 #endif
@@ -1737,6 +1744,16 @@ extension BleScanner: CBPeripheralDelegate {
             s.firmwareVersion = versionString
 
             print("[BLE] FWV(\(id)) Raw=0x\(String(format: "%02X", byte)) Parsed=\(versionString)")
+
+            // The scan list shows an UPDATE pill, and it shouldn't take
+            // opening the device to populate it. Only SMP products — the
+            // Relay runs the legacy path and has its own update state.
+            let type = RareBitDeviceType.from(advertisedName: peripheral.name)
+            if type == .proFlag || type == .proReceiver {
+                Task { [weak self] in
+                    _ = try? await self?.checkFirmwareUpdate(for: id, deviceType: type)
+                }
+            }
 
             if selectedId == id {
                 syncSelectedUIFromSession()

@@ -959,8 +959,13 @@ struct DeviceDetailView: View {
 
     private var devPrimaryButtonTitle: String {
         if fetchingDev { return "Fetching…" }
-        if let dev = armedDevRelease, let desc = dev.devDescription {
-            return "Install dev \(desc)"
+        if let dev = armedDevRelease {
+            // Just the build number: dev builds all share a pinned version
+            // byte, so that's the part that identifies one, and the banner
+            // directly above already carries the full version. Spelling it
+            // out here truncated the button on a 4.7" screen.
+            if let build = dev.manifest.build { return "Install build \(build)" }
+            return "Install dev build"
         }
         return "Fetch dev build"
     }

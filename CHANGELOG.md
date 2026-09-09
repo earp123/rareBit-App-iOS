@@ -22,7 +22,9 @@ Relay, BLINK RED — exact-name matched in `RareBitFirmware.swift`).
   builds only, a PAT-authenticated development channel reading
   `development`-branch pre-releases from the private firmware repo.
 - **`ScanListView` / `DeviceDetailView`** — device list and per-device
-  config UI (short-press enable/delay, battery, DFU).
+  config UI (short-press enable/delay, battery, DFU). Scan-list cards carry
+  status pills (connected, battery fault or low, update available) and a
+  battery-coloured glow, both driven by `effectiveBatteryLevel(for:)`.
 
 ### watchOS app — `Watch Receiver Watch App/` (target: *Watch Receiver Watch App*)
 On-wrist receiver a referee wears during a match. Two swipeable UI paths
@@ -147,6 +149,29 @@ user-assignable per flag from the watch.
 
 ## History
 
+### 2026-09-09 — Status pills on scan-list cards (iOS)
+- Device cards now carry pills beside `CONNECTED`: `LOW BATT` (red) when the
+  battery is genuinely low, `SENSE FAULT` and `NO BATT READ` (yellow) for the
+  two diagnostic fault states, and `UPDATE` (green) when a newer release
+  exists. Driven by `effectiveBatteryLevel(for:)`, so a unit with a faulty
+  sense divider reads SENSE FAULT rather than being called flat.
+- `NO BATT READ` covers `.unavailable` — a failed ADC read rather than a bad
+  divider. Not asked for, but a pill for one fault state and silence for its
+  sibling would have been a hole.
+- `UPDATE` is green rather than the previous yellow `UPDATE!`: yellow now
+  means "don't trust this reading" across the glow, the battery label and two
+  of these pills, and an available update is not a fault. Green also matches
+  the detail screen's existing Update Available banner.
+- **`UPDATE` is now a real version comparison.** It used to be a proxy —
+  connected, has SMP, but no CFG service — which only ever caught firmware old
+  enough to predate the config service. `checkFirmwareUpdate` now records into
+  `updateAvailableById`, and runs when the FWV byte arrives, so the pill is
+  correct without the detail view being opened. One request per product per
+  session, since `latestRelease` is cached. The old proxy is OR'd in, because
+  firmware predating FWV never triggers a version check at all.
+- Pills wrap two per row: three across won't fit a 4.7" card once the 56pt
+  device icon takes its share.
+
 ### 2026-09-08 — Development firmware channel behind the hidden dev gesture (iOS)
 - The hidden DFU card — the one behind the 3-second hold on the device title
   card — **is now the development channel**, rather than the stable updater
@@ -183,6 +208,16 @@ user-assignable per flag from the watch.
 - Product mapping is the stable path's, so a receiver on RXRLY firmware
   fetches `RXRLY_` rather than `PRO_RX_`. Cross-grade via the dev channel is
   out of scope.
+- **Verified on hardware (9 Sep):** a v1.9 Flag fetched
+  `PRO_FLAG_v2.0.0-dev.8` (`0x20`, build 8), downloaded it from the private
+  repo through the asset API URL, passed SHA-256, uploaded over SMP, rebooted
+  and read back `FWV 0x20`. `[FW] dev cleared` fired on the reboot disconnect,
+  so the armed release doesn't survive a flash. The PAT in `Secrets.swift` is
+  confirmed still valid.
+- The armed button says `Install build 8`, not the version — dev builds share
+  a pinned version byte, so the build number is the identifying part, and the
+  full version is already on the banner above it. Spelling it out truncated
+  the button on a 4.7" screen.
 
 ### 2026-09-08 — Battery read failures and sense faults are no longer shown as "flat" (iOS)
 - The CFG byte's battery bits (7–6) have no "unknown" value, so a unit whose
@@ -208,13 +243,29 @@ user-assignable per flag from the watch.
 - Read on discovery after the CFG read, and re-read on every CFG notification
   since the battery bits changing makes the diagnostic behind them stale. No
   in-flight guard — CoreBluetooth queues GATT ops.
-- Known gap: `ScanListView`'s border still derives from the CFG byte, so a
-  faulted unit reads red in the scan list until that call site moves to
-  `effectiveBatteryLevel(for:)`. Out of the task's stated scope; the switch
-  there gained the two cases for exhaustiveness only.
+- `ScanListView`'s border and its brighter "full" glow read the effective
+  level too, so the scan list and the detail screen can't disagree about a
+  faulted unit. Initially left on the CFG byte because the task scoped that
+  file out — closed once the bench run produced a real sense-faulted Flag that
+  glowed red in the list while the detail screen said SENSE FAULT.
 - Firmware caveat recorded, not acted on: STAT high also reads high when
   nothing drives the pin, so sense fault is only unambiguous undocked. The app
   only ever sees a docked device and does no extra inference.
+- **Verified on hardware (9 Sep), and it caught a real fault on first use.**
+  Absence path first: the same Flag on v1.9 exposed no `…0005` characteristic,
+  logged no `[BLE] BATT` lines, and showed the CFG-derived `LOW` unchanged —
+  the per-notification re-read correctly no-ops when the handle is nil, so
+  legacy units see no extra traffic. Flashed to 2.0 and the characteristic
+  appeared: `mv=36 err=0 lvl=BATTERY_LOW flags=0x05 n=3`. Bit 2 set, so the
+  app resolved `.senseFault` and showed **SENSE FAULT** in yellow where
+  minutes earlier the same unit with the same cell had shown a red `LOW`.
+  Exactly the false-flat this exists to stop.
+- That unit reads **36–43 mV** at the divider tap across 40 samples against a
+  healthy ~1000–1070 mV, with `errno 0` throughout — the ADC read succeeds and
+  measures almost nothing, which is the 680R-for-68k1 divider batch. Note the
+  sense-fault *bit* is only unambiguous undocked and this was read docked; the
+  millivolt figure is the independent evidence. 40 reads produced no CFG
+  write, no malformed payload and no SHA mismatch.
 
 ### 2026-09-07 — Stoppage log: tap tracks delays without stopping the clock (watch)
 - Per Sam's directive: as an **optional setting**, a tap on a running match
