@@ -18,6 +18,8 @@ struct DeviceDetailView: View {
     @State private var latestFirmwareVersion: FirmwareVersion? = nil
     @State private var checkingForUpdate = false
     @State private var forceShowDfu = false  // Developer option
+    @State private var devStatus: String = ""
+    @State private var fetchingDev = false
     @State private var longPressTimer: Timer?
     
     // Consolidated loading state
@@ -73,6 +75,11 @@ struct DeviceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             initializeView()
+        }
+        .onDisappear {
+#if DEBUG
+            ble.clearDevRelease()
+#endif
         }
         .onChange(of: ble.connectedDeviceIDs) { _, set in
             if set.contains(deviceId) { return }
@@ -459,8 +466,11 @@ struct DeviceDetailView: View {
         // Only show DFU card when appropriate
         if shouldShowDfuCard {
             VStack(alignment: .leading, spacing: 10) {
-                // --- Update Status Banner ---
-                if let updateAvail = updateAvailable {
+                // --- Header: development channel when the hidden card is
+                //     unlocked, otherwise the normal update status ---
+                if devChannelMode {
+                    devChannelBanner
+                } else if let updateAvail = updateAvailable {
                     HStack(spacing: 8) {
                         Image(systemName: updateAvail ? "arrow.down.circle.fill" : "checkmark.circle.fill")
                             .foregroundStyle(updateAvail ? .green : .secondary)
@@ -521,59 +531,82 @@ struct DeviceDetailView: View {
                     }
                     
                     HStack(spacing: 12) {
-                        // Auto Update Button (smart install)
-                        Button {
-                            Task {
-                                do {
-                                    ble.dfuErrorText = nil
-                                    let didUpdate = try await ble.autoUpdateIfNeeded(for: deviceId, deviceType: deviceType)
-                                    if !didUpdate {
-                                        print("✅ Device already up to date")
-                                    }
-                                } catch {
-                                    ble.dfuErrorText = "Auto update failed: \(error.localizedDescription)"
+                        if devChannelMode {
+                            // The hidden card's entire purpose: fetch the
+                            // newest 'development' build, then flash it. One
+                            // button, two states — no stable-path buttons
+                            // here, because in this mode the card isn't the
+                            // stable updater.
+                            Button {
+                                if armedDevRelease == nil {
+                                    fetchDevRelease()
+                                } else {
+                                    installDevRelease()
                                 }
+                            } label: {
+                                Text(devPrimaryButtonTitle)
+                                    .frame(maxWidth: .infinity)
                             }
-                        } label: {
-                            Text(updateAvailable == true ? "Install Update" : "Update")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(updateAvailable == true ? .green : .blue)
-                        .disabled(ble.dfuInProgress || !(deviceType == .proFlag || deviceType == .proReceiver))
-                        
-                        // Manual DFU Button
-                        Button {
-                            Task {
-                                do {
-                                    ble.dfuErrorText = nil
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .disabled(fetchingDev || ble.dfuInProgress
+                                      || !(deviceType == .proFlag || deviceType == .proReceiver))
 
-                                    guard let product = ble.smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
-                                        ble.dfuErrorText = "No firmware release for this device type"
-                                        return
+                        } else {
+                            // Auto Update Button (smart install)
+                            Button {
+                                Task {
+                                    do {
+                                        ble.dfuErrorText = nil
+                                        let didUpdate = try await ble.autoUpdateIfNeeded(for: deviceId, deviceType: deviceType)
+                                        if !didUpdate {
+                                            print("✅ Device already up to date")
+                                        }
+                                    } catch {
+                                        ble.dfuErrorText = "Auto update failed: \(error.localizedDescription)"
                                     }
-
-                                    ble.dfuStateText = "Step 1: fetching latest \(product.rawValue) release"
-                                    let update = try await FirmwareReleaseService.shared.latestRelease(for: product)
-
-                                    ble.dfuStateText = "Step 2: downloading + verifying firmware"
-                                    let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
-
-                                    ble.dfuStateText = "Step 3: starting DFU"
-                                    await MainActor.run {
-                                        ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
-                                    }
-
-                                } catch {
-                                    ble.dfuErrorText = "Manual DFU failed: \(error)"
                                 }
+                            } label: {
+                                Text(updateAvailable == true ? "Install Update" : "Update")
+                                    .frame(maxWidth: .infinity)
                             }
-                        } label: {
-                            Text("Manual")
-                                .frame(maxWidth: .infinity)
+                            .buttonStyle(.borderedProminent)
+                            .tint(updateAvailable == true ? .green : .blue)
+                            .disabled(ble.dfuInProgress || !(deviceType == .proFlag || deviceType == .proReceiver))
+
+                            // Manual DFU Button
+                            Button {
+                                Task {
+                                    do {
+                                        ble.dfuErrorText = nil
+
+                                        guard let product = ble.smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
+                                            ble.dfuErrorText = "No firmware release for this device type"
+                                            return
+                                        }
+
+                                        ble.dfuStateText = "Step 1: fetching latest \(product.rawValue) release"
+                                        let update = try await FirmwareReleaseService.shared.latestRelease(for: product)
+
+                                        ble.dfuStateText = "Step 2: downloading + verifying firmware"
+                                        let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
+
+                                        ble.dfuStateText = "Step 3: starting DFU"
+                                        await MainActor.run {
+                                            ble.startDfuFromURL(for: deviceId, fileURL: fileURL)
+                                        }
+
+                                    } catch {
+                                        ble.dfuErrorText = "Manual DFU failed: \(error)"
+                                    }
+                                }
+                            } label: {
+                                Text("Manual")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(ble.dfuInProgress)
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(ble.dfuInProgress)
 
                         Button {
                             ble.cancelDfu()
@@ -874,6 +907,106 @@ struct DeviceDetailView: View {
         return version.major >= 10  // Relay firmware starts at v10.0 (0xA0)
     }
     
+    /// Whether the hidden card is presenting as the development channel.
+    ///
+    /// The 3s hold sets `forceShowDfu` in every configuration, so a Release
+    /// build still gets the DFU card forced open — it just gets the ordinary
+    /// stable UI, because the dev channel isn't compiled in at all.
+    private var devChannelMode: Bool {
+#if DEBUG
+        return forceShowDfu
+#else
+        return false
+#endif
+    }
+
+    /// The armed development release, or nil. Always nil in Release builds —
+    /// nothing can arm one there.
+    private var armedDevRelease: FirmwareUpdateRelease? {
+#if DEBUG
+        return ble.pendingDevRelease
+#else
+        return nil
+#endif
+    }
+
+    /// Header for the hidden card. This card is the development channel, so
+    /// it says so instead of dressing up the stable update banner.
+    private var devChannelBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "hammer.fill")
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Development channel")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                Text(devStatus.isEmpty
+                     ? "Newest build from 'development' — installs with no version check"
+                     : devStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var devPrimaryButtonTitle: String {
+        if fetchingDev { return "Fetching…" }
+        if let dev = armedDevRelease, let desc = dev.devDescription {
+            return "Install dev \(desc)"
+        }
+        return "Fetch dev build"
+    }
+
+    /// Pull the newest `development` pre-release for this device's product
+    /// and arm it. Compiled as a no-op in Release, where `devChannelMode` is
+    /// always false and this can never be reached.
+    private func fetchDevRelease() {
+#if DEBUG
+        fetchingDev = true
+        devStatus = "Fetching from 'development'…"
+
+        Task {
+            defer { fetchingDev = false }
+            do {
+                // Same mapping as the stable path, so a receiver on RXRLY
+                // firmware fetches RXRLY_ rather than PRO_RX_.
+                guard let product = ble.smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
+                    devStatus = "No development channel for this device type"
+                    return
+                }
+                let update = try await FirmwareReleaseService.shared.latestDevRelease(for: product)
+                ble.armDevRelease(update)
+                devStatus = "Dev \(update.devDescription ?? "build") armed — press Install"
+            } catch FirmwareReleaseError.noDevReleaseForProduct {
+                devStatus = "No dev release on 'development' yet"
+            } catch {
+                devStatus = "Dev fetch failed: \(error.localizedDescription)"
+            }
+        }
+#endif
+    }
+
+    private func installDevRelease() {
+#if DEBUG
+        Task {
+            do {
+                ble.dfuErrorText = nil
+                try await ble.installPendingDevRelease(for: deviceId)
+            } catch {
+                ble.dfuErrorText = "Dev install failed: \(error.localizedDescription)"
+            }
+        }
+#endif
+    }
+
     /// Should show the DFU card?
     /// - Show if update is available
     /// - Hide if up to date (for known device types with release tags)

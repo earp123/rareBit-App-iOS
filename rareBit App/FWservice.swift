@@ -5,6 +5,10 @@ import Foundation
 struct GitHubRelease: Decodable {
     let tag_name: String
     let assets: [Asset]
+    /// Branch the release was cut from. Optional so public-repo payloads,
+    /// which nobody filters on, keep decoding unchanged.
+    let target_commitish: String?
+    let prerelease: Bool?
 }
 
 struct Asset: Decodable {

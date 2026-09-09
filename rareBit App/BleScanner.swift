@@ -63,6 +63,40 @@ final class BleScanner: NSObject, ObservableObject {
     @Published var dfuUpgradeState: FirmwareUpgradeState?
     @Published var dfuEffectiveSuccess = false
 
+#if DEBUG
+    /// A development-channel release the developer explicitly armed via the
+    /// hidden dev card. Bypasses the newer-than-device gate on purpose: dev
+    /// builds share a pinned version byte (flag/rx 0x20, RXRLY 0xA1), so a
+    /// version comparison says nothing about them — the developer chose it.
+    @Published var pendingDevRelease: FirmwareUpdateRelease?
+
+    func armDevRelease(_ release: FirmwareUpdateRelease) {
+        pendingDevRelease = release
+        print("[FW] dev armed")
+    }
+
+    func clearDevRelease() {
+        guard pendingDevRelease != nil else { return }
+        pendingDevRelease = nil
+        print("[FW] dev cleared")
+    }
+
+    /// Download and flash the armed dev release. Skips `checkFirmwareUpdate`
+    /// entirely; SHA-256 verification is still mandatory, and the DFU
+    /// progress / reboot / version-confirm flow downstream is unchanged.
+    func installPendingDevRelease(for deviceId: UUID) async throws {
+        guard let update = pendingDevRelease else { return }
+
+        dfuErrorText = nil
+        dfuStateText = "Downloading dev firmware…"
+
+        let fileURL = try await FirmwareReleaseService.shared.downloadVerifiedOtaImage(update)
+
+        dfuStateText = "Starting DFU update..."
+        startDfuFromURL(for: deviceId, fileURL: fileURL)
+    }
+#endif
+
     // Relay legacy OTA DFU state (docs/relay-dfu-flow.md)
     @Published var relayDfuInProgress = false
     @Published var relayDfuProgress: Double = 0.0
@@ -1466,6 +1500,9 @@ extension BleScanner: CBCentralManagerDelegate {
 
         batteryLevelById.removeValue(forKey: id)
         battDiagById.removeValue(forKey: id)
+#if DEBUG
+        clearDevRelease()
+#endif
         cfgCharacteristicById.removeValue(forKey: id)
         fwvCharacteristicById.removeValue(forKey: id)
         battDiagCharacteristicById.removeValue(forKey: id)
