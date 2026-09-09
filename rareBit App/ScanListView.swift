@@ -66,10 +66,14 @@ struct ScanListView: View {
                         let glowRadius: CGFloat = isFull ? 20 : 10
                         let displayName = d.advertisedName ?? d.peripheral.name ?? "Unnamed"
                         let s = ble.sessions[d.id]
+                        // Either a real version comparison says so, or the
+                        // device is old enough to have no CFG service at all —
+                        // that one predates FWV, so no version check can run.
                         let showUpdate = isConnected
-                            && (s?.servicesDiscovered ?? false)
-                            && (s?.hasSmpCharacteristic ?? false)
-                            && !(s?.hasConfigService ?? true)
+                            && ((ble.updateAvailableById[d.id] == true)
+                                || ((s?.servicesDiscovered ?? false)
+                                    && (s?.hasSmpCharacteristic ?? false)
+                                    && !(s?.hasConfigService ?? true)))
 
 
                         Button {
@@ -95,6 +99,7 @@ struct ScanListView: View {
                                 glowColor: borderColor,
                                 glowRadius: glowRadius,
                                 iconAssetName: iconName(for: displayName),
+                                batteryLevel: ble.effectiveBatteryLevel(for: d.id),
                                 showUpdate: showUpdate
                             )
                         }
@@ -260,6 +265,7 @@ private struct DeviceCard: View {
     let glowColor: Color
     let glowRadius: CGFloat
     let iconAssetName: String?
+    let batteryLevel: BleScanner.BatteryLevel
     let showUpdate: Bool
     
 
@@ -271,6 +277,46 @@ private struct DeviceCard: View {
             glowColor: glowColor,
             glowRadius: glowRadius
         )
+    }
+
+    private struct Pill: Identifiable {
+        var id: String { text }
+        let text: String
+        let background: Color
+        let foreground: Color
+    }
+
+    /// Yellow for the two fault states, matching the card glow and the detail
+    /// screen; red only for a battery that is genuinely low. A faulted unit
+    /// reports LOW over CFG, so without `effectiveBatteryLevel` upstream this
+    /// row would call a broken sense divider a flat cell.
+    private var pills: [Pill] {
+        var out = [Pill(text: "CONNECTED", background: .white.opacity(0.15), foreground: .white)]
+
+        switch batteryLevel {
+        case .low:
+            out.append(Pill(text: "LOW BATT", background: .red, foreground: .white))
+        case .senseFault:
+            out.append(Pill(text: "SENSE FAULT", background: .yellow, foreground: .black))
+        case .unavailable:
+            out.append(Pill(text: "NO BATT READ", background: .yellow, foreground: .black))
+        case .unknown, .mid, .high, .full:
+            break
+        }
+
+        if showUpdate {
+            // Green, not the old yellow: yellow now means "don't trust this
+            // reading", and an available update is neither a fault nor a
+            // warning.
+            out.append(Pill(text: "UPDATE", background: .green, foreground: .black))
+        }
+        return out
+    }
+
+    private var pillRows: [[Pill]] {
+        stride(from: 0, to: pills.count, by: 2).map {
+            Array(pills[$0 ..< min($0 + 2, pills.count)])
+        }
     }
 
     var body: some View {
@@ -298,25 +344,22 @@ private struct DeviceCard: View {
                     .foregroundColor(style.titleColor)
                     .lineLimit(1)
 
-                // Status badges below name
+                // Status pills below name. Two per row: three pills won't
+                // fit across a 4.7" card once the device icon takes its 56pt.
                 if isConnected {
-                    HStack(spacing: 8) {
-                        Text("CONNECTED")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Capsule())
-
-                        if showUpdate {
-                            Text("UPDATE!")
-                                .font(.system(size: 11, weight: .heavy))
-                                .foregroundColor(.black)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color.yellow)
-                                .clipShape(Capsule())
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(pillRows.enumerated()), id: \.offset) { _, row in
+                            HStack(spacing: 8) {
+                                ForEach(row) { pill in
+                                    Text(pill.text)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(pill.foreground)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(pill.background)
+                                        .clipShape(Capsule())
+                                }
+                            }
                         }
                     }
                     .padding(.top, 2)

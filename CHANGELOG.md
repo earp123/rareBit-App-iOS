@@ -22,7 +22,9 @@ Relay, BLINK RED — exact-name matched in `RareBitFirmware.swift`).
   builds only, a PAT-authenticated development channel reading
   `development`-branch pre-releases from the private firmware repo.
 - **`ScanListView` / `DeviceDetailView`** — device list and per-device
-  config UI (short-press enable/delay, battery, DFU).
+  config UI (short-press enable/delay, battery, DFU). Scan-list cards carry
+  status pills (connected, battery fault or low, update available) and a
+  battery-coloured glow, both driven by `effectiveBatteryLevel(for:)`.
 
 ### watchOS app — `Watch Receiver Watch App/` (target: *Watch Receiver Watch App*)
 On-wrist receiver a referee wears during a match. Two swipeable UI paths
@@ -146,6 +148,29 @@ user-assignable per flag from the watch.
 ---
 
 ## History
+
+### 2026-09-09 — Status pills on scan-list cards (iOS)
+- Device cards now carry pills beside `CONNECTED`: `LOW BATT` (red) when the
+  battery is genuinely low, `SENSE FAULT` and `NO BATT READ` (yellow) for the
+  two diagnostic fault states, and `UPDATE` (green) when a newer release
+  exists. Driven by `effectiveBatteryLevel(for:)`, so a unit with a faulty
+  sense divider reads SENSE FAULT rather than being called flat.
+- `NO BATT READ` covers `.unavailable` — a failed ADC read rather than a bad
+  divider. Not asked for, but a pill for one fault state and silence for its
+  sibling would have been a hole.
+- `UPDATE` is green rather than the previous yellow `UPDATE!`: yellow now
+  means "don't trust this reading" across the glow, the battery label and two
+  of these pills, and an available update is not a fault. Green also matches
+  the detail screen's existing Update Available banner.
+- **`UPDATE` is now a real version comparison.** It used to be a proxy —
+  connected, has SMP, but no CFG service — which only ever caught firmware old
+  enough to predate the config service. `checkFirmwareUpdate` now records into
+  `updateAvailableById`, and runs when the FWV byte arrives, so the pill is
+  correct without the detail view being opened. One request per product per
+  session, since `latestRelease` is cached. The old proxy is OR'd in, because
+  firmware predating FWV never triggers a version check at all.
+- Pills wrap two per row: three across won't fit a 4.7" card once the 56pt
+  device icon takes its share.
 
 ### 2026-09-08 — Development firmware channel behind the hidden dev gesture (iOS)
 - The hidden DFU card — the one behind the 3-second hold on the device title
