@@ -17,7 +17,10 @@ Relay, BLINK RED — exact-name matched in `RareBitFirmware.swift`).
   per-device battery level and firmware version, and reads the battery
   diagnostic characteristic where firmware exposes it.
 - **`FirmwareService` / DFU** — firmware updates over Nordic SMP (McuManager)
-  using bundled `.bin` images and GitHub Releases as the update source.
+  using bundled `.bin` images and GitHub Releases as the update source. Two
+  channels: the public repo (stable, unauthenticated, cached) and, in Debug
+  builds only, a PAT-authenticated development channel reading
+  `development`-branch pre-releases from the private firmware repo.
 - **`ScanListView` / `DeviceDetailView`** — device list and per-device
   config UI (short-press enable/delay, battery, DFU).
 
@@ -143,6 +146,43 @@ user-assignable per flag from the watch.
 ---
 
 ## History
+
+### 2026-09-08 — Development firmware channel behind the hidden dev gesture (iOS)
+- The hidden DFU card — the one behind the 3-second hold on the device title
+  card — **is now the development channel**, rather than the stable updater
+  with a dev panel stacked on top of it. Unlocked, the card leads with a
+  "Development channel" header and carries a single primary button that reads
+  `Fetch dev build`, then `Install dev v2.0.0 (build 57)` once armed. The
+  stable Install Update / Manual buttons are not shown in that mode: the card
+  isn't the stable updater while it's being a dev tool. iOS twin of Android's
+  10 s `DEV_HOLD_MS` dev card.
+- Unforced, the card is byte-for-byte what it was — same banner, same buttons,
+  same behaviour. Only the hold-to-unlock state changed.
+- **No version gate on the dev path.** Dev builds share a pinned version byte
+  per stream (flag/rx `0x20`, RXRLY `0xA1`), so a version comparison says
+  nothing about them — they're told apart by `build`. The armed release skips
+  `checkFirmwareUpdate` entirely; the developer chose it. Ordering comes from
+  parsing the `-dev.<n>` suffix rather than trusting GitHub's list order.
+- **The stable path cannot be affected.** `latestDevRelease` never writes into
+  `cached`, which is what feeds stable checks — so a failed or stale dev fetch
+  can't poison a later `Install Update`. The public repo publishes from
+  `production` only, so no prerelease guard is needed there (Android needed
+  one only because it still reads stable from the private repo).
+- Private-repo assets are fetched through the asset API `url` with
+  `Accept: application/octet-stream` plus the PAT; `browser_download_url`
+  404s on a private repo. SHA-256 verification is unchanged and still
+  mandatory on the dev path.
+- **The PAT cannot ship.** Every dev reference — the service call, the private
+  repo URL, the armed-release state, the card — is inside `#if DEBUG`.
+  Verified against a Release-configuration binary: no token-shaped string, no
+  `githubPAT` symbol, and no trace of the private repo URL. `ship.sh` installs
+  Debug, so the developer path is unaffected.
+- The armed release clears on disconnect, on leaving the detail view, and
+  hence after a successful flash (the reboot disconnects). Log lines:
+  `[FW] dev <tag> → <byte> build <n>`, `[FW] dev armed`, `[FW] dev cleared`.
+- Product mapping is the stable path's, so a receiver on RXRLY firmware
+  fetches `RXRLY_` rather than `PRO_RX_`. Cross-grade via the dev channel is
+  out of scope.
 
 ### 2026-09-08 — Battery read failures and sense faults are no longer shown as "flat" (iOS)
 - The CFG byte's battery bits (7–6) have no "unknown" value, so a unit whose

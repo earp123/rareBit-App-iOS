@@ -41,8 +41,14 @@ Notes:
   bootloader service `1530`); **PRO Flag / PRO Receiver use SMP (McuManager)**.
   Keep the two flows separate — don't route relays down the SMP path.
 - FW version byte is nibble-encoded (`0x1A` = v1.10); minor caps at 15.
-- GitHub release checks are unauthenticated (60 req/hr/IP) and session-cached;
-  `/releases/latest` ignores drafts and prereleases.
+- GitHub release checks on the **public** repo are unauthenticated
+  (60 req/hr/IP) and session-cached; `/releases/latest` ignores drafts and
+  prereleases. The **development channel** is the exception: it reads the
+  private `rareBit-Flags-Receivers` repo with the PAT in `Secrets.swift`, is
+  never cached, and is compiled out entirely of Release builds (`#if DEBUG`),
+  so the token cannot ship. Private-repo assets must be fetched via the
+  asset API `url` + `Accept: application/octet-stream` —
+  `browser_download_url` 404s there.
 - TEMP: the iOS scan filter accepts advertisements with no service UUIDs
   because relay-v1.9 firmware doesn't advertise the config UUID while docked.
   Tighten to config-UUID-only once firmware does (then move the filter into
