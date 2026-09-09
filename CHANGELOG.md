@@ -218,10 +218,11 @@ user-assignable per flag from the watch.
 - Read on discovery after the CFG read, and re-read on every CFG notification
   since the battery bits changing makes the diagnostic behind them stale. No
   in-flight guard — CoreBluetooth queues GATT ops.
-- Known gap: `ScanListView`'s border still derives from the CFG byte, so a
-  faulted unit reads red in the scan list until that call site moves to
-  `effectiveBatteryLevel(for:)`. Out of the task's stated scope; the switch
-  there gained the two cases for exhaustiveness only.
+- `ScanListView`'s border and its brighter "full" glow read the effective
+  level too, so the scan list and the detail screen can't disagree about a
+  faulted unit. Initially left on the CFG byte because the task scoped that
+  file out — closed once the bench run produced a real sense-faulted Flag that
+  glowed red in the list while the detail screen said SENSE FAULT.
 - Firmware caveat recorded, not acted on: STAT high also reads high when
   nothing drives the pin, so sense fault is only unambiguous undocked. The app
   only ever sees a docked device and does no extra inference.

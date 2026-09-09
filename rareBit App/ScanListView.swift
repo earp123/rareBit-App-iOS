@@ -62,7 +62,7 @@ struct ScanListView: View {
                         let isConnected = ble.connectedDeviceIDs.contains(d.id)
                         let isScanning = ble.isScanning
                         let borderColor = batteryBorderColor(for: d.id)
-                        let isFull = (ble.batteryLevel(for: d.id) == .full)
+                        let isFull = (ble.effectiveBatteryLevel(for: d.id) == .full)
                         let glowRadius: CGFloat = isFull ? 20 : 10
                         let displayName = d.advertisedName ?? d.peripheral.name ?? "Unnamed"
                         let s = ble.sessions[d.id]
@@ -227,17 +227,17 @@ struct ScanListView: View {
         .menuStyle(.automatic)
     }
     
-    // Cyan for full, green for high, blue for mid, red for low, yellow for unknown.
+    // Cyan for full, green for high, blue for mid, red for low, yellow for
+    // unknown or faulted. Reads the effective level, same as the detail
+    // screen: a unit whose sense divider is faulty reports LOW over CFG, and
+    // showing it red here while the detail screen says SENSE FAULT was the
+    // one place the two disagreed.
     private func batteryBorderColor(for deviceId: UUID) -> Color {
-        switch ble.batteryLevel(for: deviceId) {
+        switch ble.effectiveBatteryLevel(for: deviceId) {
         case .full: return .green
         case .high: return .cyan
         case .mid:  return .blue
         case .low:  return .red
-        // `batteryLevel(for:)` never returns the two diagnostic cases — these
-        // are here for exhaustiveness. This border still derives from the CFG
-        // byte, so a faulted unit reads red here; pointing it at
-        // `effectiveBatteryLevel(for:)` is a one-line follow-up.
         case .unknown, .unavailable, .senseFault: return .yellow
         }
     }
