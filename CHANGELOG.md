@@ -183,6 +183,16 @@ user-assignable per flag from the watch.
 - Product mapping is the stable path's, so a receiver on RXRLY firmware
   fetches `RXRLY_` rather than `PRO_RX_`. Cross-grade via the dev channel is
   out of scope.
+- **Verified on hardware (9 Sep):** a v1.9 Flag fetched
+  `PRO_FLAG_v2.0.0-dev.8` (`0x20`, build 8), downloaded it from the private
+  repo through the asset API URL, passed SHA-256, uploaded over SMP, rebooted
+  and read back `FWV 0x20`. `[FW] dev cleared` fired on the reboot disconnect,
+  so the armed release doesn't survive a flash. The PAT in `Secrets.swift` is
+  confirmed still valid.
+- The armed button says `Install build 8`, not the version — dev builds share
+  a pinned version byte, so the build number is the identifying part, and the
+  full version is already on the banner above it. Spelling it out truncated
+  the button on a 4.7" screen.
 
 ### 2026-09-08 — Battery read failures and sense faults are no longer shown as "flat" (iOS)
 - The CFG byte's battery bits (7–6) have no "unknown" value, so a unit whose
@@ -215,6 +225,21 @@ user-assignable per flag from the watch.
 - Firmware caveat recorded, not acted on: STAT high also reads high when
   nothing drives the pin, so sense fault is only unambiguous undocked. The app
   only ever sees a docked device and does no extra inference.
+- **Verified on hardware (9 Sep), and it caught a real fault on first use.**
+  Absence path first: the same Flag on v1.9 exposed no `…0005` characteristic,
+  logged no `[BLE] BATT` lines, and showed the CFG-derived `LOW` unchanged —
+  the per-notification re-read correctly no-ops when the handle is nil, so
+  legacy units see no extra traffic. Flashed to 2.0 and the characteristic
+  appeared: `mv=36 err=0 lvl=BATTERY_LOW flags=0x05 n=3`. Bit 2 set, so the
+  app resolved `.senseFault` and showed **SENSE FAULT** in yellow where
+  minutes earlier the same unit with the same cell had shown a red `LOW`.
+  Exactly the false-flat this exists to stop.
+- That unit reads **36–43 mV** at the divider tap across 40 samples against a
+  healthy ~1000–1070 mV, with `errno 0` throughout — the ADC read succeeds and
+  measures almost nothing, which is the 680R-for-68k1 divider batch. Note the
+  sense-fault *bit* is only unambiguous undocked and this was read docked; the
+  millivolt figure is the independent evidence. 40 reads produced no CFG
+  write, no malformed payload and no SHA mismatch.
 
 ### 2026-09-07 — Stoppage log: tap tracks delays without stopping the clock (watch)
 - Per Sam's directive: as an **optional setting**, a tap on a running match
