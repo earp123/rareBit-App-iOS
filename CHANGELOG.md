@@ -149,6 +149,16 @@ user-assignable per flag from the watch.
 
 ## History
 
+### 2026-09-11 — Options menu: direct shop link replaces reseller sub-menu (iOS)
+- `rarebitofficial.com/shop` is live and rareBit sells direct, so the two
+  third-party reseller links — and the "Buy PRO Sets" sub-menu that existed
+  only to hold them — are gone. One flat **Shop** link takes their place in
+  the same position, keeping the cart icon.
+- The menu is now a single level of five items: User Manual, Shop,
+  rareBitOfficial.com, Apple Watch, Support. Android mirrors the same label
+  and URL.
+- No reseller URLs remain anywhere in the project.
+
 ### 2026-09-09 — Status pills on scan-list cards (iOS)
 - Device cards now carry pills beside `CONNECTED`: `LOW BATT` (red) when the
   battery is genuinely low, `SENSE FAULT` and `NO BATT READ` (yellow) for the

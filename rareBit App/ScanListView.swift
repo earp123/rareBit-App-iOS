@@ -192,16 +192,8 @@ struct ScanListView: View {
                 Label("User Manual", systemImage: "book")
             }
             
-            Menu {
-                Link(destination: URL(string: "https://refsneedlovetoo.com/collections/referee-gear/products/next-generation-buzzer-flags-rarebit-pro-set")!) {
-                    Label("RefsNeedLoveToo", systemImage: "heart.fill")
-                }
-                
-                Link(destination: URL(string: "https://thetopref.com/collections/beep-flags/products/rarebit-beep-flags")!) {
-                    Label("The Top Ref", systemImage: "star.fill")
-                }
-            } label: {
-                Label("Buy PRO Sets", systemImage: "cart")
+            Link(destination: URL(string: "https://www.rarebitofficial.com/shop")!) {
+                Label("Shop", systemImage: "cart")
             }
             
             Link(destination: URL(string: "https://rarebitofficial.com")!) {
