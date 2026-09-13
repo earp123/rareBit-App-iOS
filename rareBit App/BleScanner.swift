@@ -1706,7 +1706,7 @@ extension BleScanner: CBPeripheralDelegate {
             configByteById[id] = byte
             batteryLevelById[id] = cfg.batteryLevel
 
-            print("[BLE] CFG(\(id)) =0x\(String(format: "%02X", byte)) SHPrs=\(cfg.shortPressEnabled) Delay=\((Int(cfg.shortPressDelay) * 20)) Batt=\(cfg.batteryLevel.rawValue)")
+            print("[BLE] CFG(\(id)) =0x\(String(format: "%02X", byte)) SHPrs=\(cfg.shortPressEnabled) Delay=\((Int(cfg.shortPressDelay) * 30)) Batt=\(cfg.batteryLevel.rawValue)")
 
             // The battery bits just changed, so the diagnostic behind them is
             // stale. No in-flight guard needed — CoreBluetooth queues GATT ops.
