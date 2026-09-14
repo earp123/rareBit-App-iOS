@@ -202,6 +202,16 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 - Release-configuration binary re-checked: no token-shaped string, no
   `githubPAT` symbol, and **neither** private repo URL — `rareBit-Relay`
   included, since the per-product dev source is inside `#if DEBUG`.
+- **Verified on hardware (14 Sep):** a docked Relay fetched
+  `RELAY_v2.0-dev.1` (`0x20`, build 1) from `rareBit-Relay`, verified
+  `rareBit-Relay-v2.0-dev.1-dfu.zip` (261013 bytes), triggered, flashed over
+  legacy DFU in 88 s, validated, reset and reconnected. `[FW] dev cleared`
+  fired on the reboot. Before the hold, the same Relay's card still resolved
+  `relay-v2.0` from the public repo and reported up to date.
+- Worth knowing: the version byte is pinned per stream, so a dev Relay build
+  and stable v2.0 both read `0x20`. `confirmRelayVersion` therefore can't tell
+  them apart — the successful flash is the evidence, not the version readback,
+  and "Version confirmed: 0x20" is weaker than it looks on this path.
 
 ### 2026-09-13 — Alert 3 (short press) on the watch; delay unit and copy on iOS
 - The relay's notify byte bits 1–0 are a type field, and type `0x03` is a
