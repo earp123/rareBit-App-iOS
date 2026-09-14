@@ -26,16 +26,23 @@ enum FirmwareProduct: String, CaseIterable {
     /// Release tags are "<product>-v<version>", e.g. "flag-v1.9".
     var tagPrefix: String { "\(rawValue)-v" }
 
-    /// Development builds live in the private firmware repo under its older
-    /// naming, e.g. "PRO_FLAG_v2.0.0-dev.57". The Relay has no dev channel.
-    var devTagPrefix: String? {
+#if DEBUG
+    /// Where a product's development builds come from. The Relay differs from
+    /// the other three on every axis: its own private repo, published from
+    /// `main` rather than `development`, tagged `RELAY_` with a two-part
+    /// version. Debug-only, so no private repo URL reaches a Release binary.
+    var devSource: (releasesURL: URL, branch: String, tagPrefix: String) {
+        func releases(_ repo: String) -> URL {
+            URL(string: "https://api.github.com/repos/earp123/\(repo)/releases?per_page=30")!
+        }
         switch self {
-        case .flag:  return "PRO_FLAG_"
-        case .rx:    return "PRO_RX_"
-        case .rxrly: return "RXRLY_"
-        case .relay: return nil
+        case .flag:  return (releases("rareBit-Flags-Receivers"), "development", "PRO_FLAG_")
+        case .rx:    return (releases("rareBit-Flags-Receivers"), "development", "PRO_RX_")
+        case .rxrly: return (releases("rareBit-Flags-Receivers"), "development", "RXRLY_")
+        case .relay: return (releases("rareBit-Relay"),           "main",        "RELAY_")
         }
     }
+#endif
 }
 
 // MARK: - Channel
@@ -106,8 +113,8 @@ struct FirmwareUpdateRelease {
 
 enum FirmwareReleaseError: LocalizedError {
     case noReleaseForProduct(String)
-    case noDevReleaseForProduct(String)
-    case devNotSupported(String)
+    case noDevReleaseOnBranch(String)
+    case devRequestFailed(Int)
     case devChannelUnavailable
     case manifestMissing
     case wrongProduct(want: String, got: String)
@@ -124,8 +131,14 @@ enum FirmwareReleaseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noReleaseForProduct(let p): return "No published release found for '\(p)'"
-        case .noDevReleaseForProduct:     return "No dev release on 'development' yet"
-        case .devNotSupported(let p):     return "'\(p)' has no development channel"
+        case .noDevReleaseOnBranch(let b): return "No dev release on '\(b)' yet"
+        case .devRequestFailed(let code):
+            // A token without access to a private repo gets 404, not 403 —
+            // GitHub hides its existence — so say so rather than leave the
+            // developer hunting a missing release.
+            return code == 404
+                ? "Development repo returned HTTP 404 — the token may not have access to it"
+                : "Development repo returned HTTP \(code)"
         case .devChannelUnavailable:      return "Development channel is unavailable in this build"
         case .manifestMissing:            return "Release has no manifest.json"
         case .wrongProduct(let w, let g): return "Release manifest is for '\(g)', expected '\(w)'"
@@ -152,14 +165,6 @@ final class FirmwareReleaseService {
     /// session per product; `cached` enforces that.
     private let releasesURL = URL(string:
         "https://api.github.com/repos/earp123/rareBit-firmware-releases/releases?per_page=30")!
-
-#if DEBUG
-    /// Private firmware repo — PAT required. Dev builds only; the stable path
-    /// never touches this. Debug-only so a Release binary carries no trace of
-    /// the private repo, not just none of the token.
-    private let devReleasesURL = URL(string:
-        "https://api.github.com/repos/earp123/rareBit-Flags-Receivers/releases?per_page=30")!
-#endif
 
     private var cachedReleaseList: [GitHubRelease]?
     private var cached: [FirmwareProduct: FirmwareUpdateRelease] = [:]
@@ -222,30 +227,29 @@ final class FirmwareReleaseService {
     /// cache feeds the stable update path, which must not see them. A failed
     /// dev fetch therefore can't poison a later stable check.
     func latestDevRelease(for product: FirmwareProduct) async throws -> FirmwareUpdateRelease {
-        guard let prefix = product.devTagPrefix else {
-            throw FirmwareReleaseError.devNotSupported(product.rawValue)
-        }
+        let source = product.devSource
 
-        var request = URLRequest(url: devReleasesURL)
+        var request = URLRequest(url: source.releasesURL)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(Secrets.githubPAT)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        guard status == 200 else {
+            throw FirmwareReleaseError.devRequestFailed(status)
         }
 
         let candidates = try JSONDecoder().decode([GitHubRelease].self, from: data)
             .filter {
-                $0.target_commitish == "development"
+                $0.target_commitish == source.branch
                     && $0.prerelease == true
-                    && $0.tag_name.hasPrefix(prefix)
+                    && $0.tag_name.hasPrefix(source.tagPrefix)
             }
 
         guard let best = candidates.max(by: {
             (devBuildNumber(from: $0.tag_name) ?? -1) < (devBuildNumber(from: $1.tag_name) ?? -1)
         }) else {
-            throw FirmwareReleaseError.noDevReleaseForProduct(product.rawValue)
+            throw FirmwareReleaseError.noDevReleaseOnBranch(source.branch)
         }
 
         guard let manifestAsset = best.assets.first(where: { $0.name == "manifest.json" }) else {

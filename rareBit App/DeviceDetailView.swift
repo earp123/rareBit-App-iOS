@@ -332,6 +332,10 @@ struct DeviceDetailView: View {
                 }
             }
 
+            if relayDevChannelMode {
+                devChannelBanner
+            }
+
             if ble.relayDfuInProgress {
                 ProgressView(value: ble.relayDfuProgress)
                     .animation(.default, value: ble.relayDfuProgress)
@@ -349,7 +353,22 @@ struct DeviceDetailView: View {
                     .foregroundStyle(.red)
             }
 
-            if ble.relayUpdateAvailable == true, !ble.relayDfuInProgress {
+            if relayDevChannelMode {
+                Button {
+                    if armedDevRelease == nil {
+                        fetchDevRelease()
+                    } else {
+                        installRelayDevRelease()
+                    }
+                } label: {
+                    Text(devPrimaryButtonTitle)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.orange)
+                .disabled(fetchingDev || ble.relayDfuInProgress)
+
+            } else if ble.relayUpdateAvailable == true, !ble.relayDfuInProgress {
                 Button {
                     Task { await ble.startRelayUpdate(for: deviceId) }
                 } label: {
@@ -918,10 +937,29 @@ struct DeviceDetailView: View {
     /// stable UI, because the dev channel isn't compiled in at all.
     private var devChannelMode: Bool {
 #if DEBUG
-        return forceShowDfu
+        // The Relay has its own firmware card and its own (legacy-DFU) flash
+        // path, so its dev controls live there instead of in the SMP card.
+        return forceShowDfu && deviceType != .relay
 #else
         return false
 #endif
+    }
+
+    /// Same hold, same dev channel — but rendered inside the Relay firmware
+    /// card, which owns the legacy-DFU sequence.
+    private var relayDevChannelMode: Bool {
+#if DEBUG
+        return forceShowDfu && deviceType == .relay
+#else
+        return false
+#endif
+    }
+
+    /// Which product's dev stream this device tracks. `smpFirmwareProduct`
+    /// deliberately returns nil for the Relay, which runs the legacy path.
+    private var devProduct: FirmwareProduct? {
+        if deviceType == .relay { return .relay }
+        return ble.smpFirmwareProduct(for: deviceId, deviceType: deviceType)
     }
 
     /// The armed development release, or nil. Always nil in Release builds —
@@ -987,19 +1025,27 @@ struct DeviceDetailView: View {
             do {
                 // Same mapping as the stable path, so a receiver on RXRLY
                 // firmware fetches RXRLY_ rather than PRO_RX_.
-                guard let product = ble.smpFirmwareProduct(for: deviceId, deviceType: deviceType) else {
+                guard let product = devProduct else {
                     devStatus = "No development channel for this device type"
                     return
                 }
                 let update = try await FirmwareReleaseService.shared.latestDevRelease(for: product)
                 ble.armDevRelease(update)
                 devStatus = "Dev \(update.devDescription ?? "build") armed — press Install"
-            } catch FirmwareReleaseError.noDevReleaseForProduct {
-                devStatus = "No dev release on 'development' yet"
+            } catch FirmwareReleaseError.noDevReleaseOnBranch(let branch) {
+                // The Relay publishes from `main`, the others from
+                // `development` — say which one came up empty.
+                devStatus = "No dev release on '\(branch)' yet"
             } catch {
                 devStatus = "Dev fetch failed: \(error.localizedDescription)"
             }
         }
+#endif
+    }
+
+    private func installRelayDevRelease() {
+#if DEBUG
+        Task { await ble.startRelayDevUpdate(for: deviceId) }
 #endif
     }
 

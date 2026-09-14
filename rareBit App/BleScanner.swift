@@ -81,6 +81,43 @@ final class BleScanner: NSObject, ObservableObject {
         print("[FW] dev cleared")
     }
 
+    /// The Relay's legacy-DFU sequence, flashing the armed development release
+    /// instead of the newest public one. Same trigger / bootloader-scan /
+    /// flash / verify steps as `startRelayUpdate`; no version gate, because
+    /// dev builds share a pinned version byte and the developer chose this one.
+    /// SHA-256 on the zip is still mandatory.
+    func startRelayDevUpdate(for deviceId: UUID) async {
+        guard !relayDfuInProgress, let update = pendingDevRelease else { return }
+
+        relayDfuInProgress = true
+        relayDfuErrorText = nil
+        relayDfuProgress = 0
+
+        do {
+            relayDfuStateText = "Downloading dev \(update.devDescription ?? "build")…"
+            let zip = try await FirmwareReleaseService.shared.downloadVerifiedPackage(update)
+
+            relayDfuStateText = "Rebooting Relay into update mode…"
+            // The post-trigger disconnect is expected — widen the reboot window
+            // so it isn't reported as a connection failure.
+            sessions[deviceId]?.awaitingRebootUntil = Date().addingTimeInterval(30)
+            try await writeRelayDfuTrigger(for: deviceId)
+
+            relayDfuStateText = "Waiting for update mode…"
+            let target = try await waitForRelayBootloader(timeout: 15)
+
+            try await flashRelay(zipURL: zip, target: target)
+
+            relayDfuStateText = "Verifying…"
+            await confirmRelayVersion(deviceId: deviceId, expected: update.manifest.versionByte ?? 0)
+            relayDfuStateText = "Flashed dev \(update.devDescription ?? "build") ✓"
+        } catch {
+            relayDfuErrorText = error.localizedDescription
+            relayDfuStateText = ""
+        }
+        relayDfuInProgress = false
+    }
+
     /// Download and flash the armed dev release. Skips `checkFirmwareUpdate`
     /// entirely; SHA-256 verification is still mandatory, and the DFU
     /// progress / reboot / version-confirm flow downstream is unchanged.

@@ -31,6 +31,7 @@ struct FirmwareVersion: Comparable, CustomStringConvertible {
             .replacingOccurrences(of: "PRO_FLAG_v", with: "")
             .replacingOccurrences(of: "PRO_RX_v", with: "")
             .replacingOccurrences(of: "RXRLY_v", with: "")
+            .replacingOccurrences(of: "RELAY_v", with: "")
             .replacingOccurrences(of: "v", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         
