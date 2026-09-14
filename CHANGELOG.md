@@ -187,6 +187,10 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
   USE" header are now gated on `firmwareVersionByteById >= 0x20`, so a 2.0
   device reads "SHORT PRESS SETTINGS" and drops the disclaimer, while older
   units still see the original framing.
+- **Verified on hardware (13 Sep):** a Receiver on RXRLY `10.1.0-dev.13` with
+  its short-press bit on emits Alert 3, and the watch plays `shortPressHaptic`
+  for it; the bolt tile cycles and previews the preset, and long presses still
+  play their slot presets unchanged.
 - Known, not fixed here: `isPlayingHaptic` has a 4-second cooldown, so a short
   press landing inside that window after a slot alert is dropped by the watch
   even though the relay sent it. Pre-existing.
@@ -259,7 +263,15 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
   `[FW] dev <tag> → <byte> build <n>`, `[FW] dev armed`, `[FW] dev cleared`.
 - Product mapping is the stable path's, so a receiver on RXRLY firmware
   fetches `RXRLY_` rather than `PRO_RX_`. Cross-grade via the dev channel is
-  out of scope.
+  out of scope. **Confirmed on hardware 13 Sep:** a Receiver on RXRLY resolved
+  `.rxrly`, fetched `RXRLY_v10.1.0-dev.13` (`0xa1`, build 13) and flashed to
+  `FWV 0xA1`.
+- One RXRLY dev install failed with "Release is missing asset …" and then
+  succeeded unchanged minutes later — consistent with fetching a freshly cut
+  release mid-publish, before CI had attached the `.bin` alongside the
+  `manifest.json` that names it. Not reproducible; the asset lookup now logs
+  the requested filename against the release's actual asset list so a repeat
+  is diagnosable in one line.
 - **Verified on hardware (9 Sep):** a v1.9 Flag fetched
   `PRO_FLAG_v2.0.0-dev.8` (`0x20`, build 8), downloaded it from the private
   repo through the asset API URL, passed SHA-256, uploaded over SMP, rebooted
