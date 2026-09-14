@@ -292,6 +292,12 @@ final class FirmwareReleaseService {
     private func downloadVerified(named name: String, sha256: String,
                                   from update: FirmwareUpdateRelease) async throws -> URL {
         guard let asset = update.release.assets.first(where: { $0.name == name }) else {
+            // The manifest named a file the release doesn't carry. Log both
+            // sides — otherwise this is indistinguishable from a download
+            // failure, and the asset name is too long to read off the UI.
+            print("[FW] ❌ '\(name)' not found in \(update.release.tag_name)")
+            print("[FW]    manifest wants: \(name)")
+            print("[FW]    release has:    \(update.release.assets.map(\.name).joined(separator: ", "))")
             throw FirmwareReleaseError.assetMissing(name)
         }
         let data = try await downloadAsset(asset, channel: update.channel)
