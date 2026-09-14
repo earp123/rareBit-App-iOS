@@ -33,9 +33,10 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
 
 - **`WatchBLEScanner`** — CoreBluetooth central. Filters scan results by name
   (all of `["rareBit", "Relay"]`) AND advertised service; connects to the
-  Relay, subscribes to the notify characteristic, plays per-flag haptic
-  presets on alerts, auto-reconnects once armed — including after a connect
-  that never lands, not just after a disconnect.
+  Relay, subscribes to the notify characteristic, plays the haptic preset for
+  the alert type (one per flag, plus one for short presses), auto-reconnects
+  once armed — including after a connect that never lands, not just after a
+  disconnect.
 - **`MatchTimer`** — match interval countdown (≤45:00, 2 periods) plus an
   independently-anchored count-up, so a stoppage can freeze the countdown
   while the count-up keeps tracking wall-clock time. Owns the expiry alarm: a
@@ -72,11 +73,17 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
 | 7 | Flag 1 linked |
 | 6 | Flag 2 linked |
 | 5–2 | (unused) |
-| 1–0 | Alert source: `0x00` none (status only), `0x01` Flag 1, `0x02` Flag 2 |
+| 1–0 | Alert type: `0x00` none (status only), `0x01` Alert 1 (slot 1 long press), `0x02` Alert 2 (slot 2 long press), `0x03` Alert 3 (short press, either flag) |
 
-Alerts trigger the per-flag haptic preset (cooldown-gated). Presets
-(`HapticPreset`): Double `.notification` / Quad `.success` / Triple `.failure`,
-user-assignable per flag from the watch.
+Alerts trigger a haptic preset (cooldown-gated). Presets (`HapticPreset`):
+Double `.notification` / Quad `.success` / Triple `.failure`, user-assignable
+from the watch — one per flag, plus one for Alert 3. Alert 3 doesn't say which
+flag was pressed, so it gets a single shared preset, and the relay only sends
+it when its own short-press setting is on.
+
+### iOS ↔ device: short-press delay
+The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
+20.
 
 ### iOS ↔ device: CFG service
 - Service `23220001-38d5-4b7b-bad0-7dee1eee1b6d`
@@ -136,8 +143,10 @@ user-assignable per flag from the watch.
 - **Expiry alarm** (watch): near-continuous heavy haptics from foreground or
   background until acknowledged by a screen tap anywhere; dedicated full-screen
   acknowledge UI; 5-minute auto-silence safety cap.
-- **Flag alerts** (watch): Relay pushes flag events; per-flag assignable haptic
-  presets with playback testing; link-status display for both flags.
+- **Flag alerts** (watch): Relay pushes flag events; assignable haptic presets
+  with playback testing — one per flag, plus one for Alert 3 (a short press
+  from either flag, which the relay sends only when its own short-press
+  setting is on); link-status display for both flags.
 - **Auto-connect** (watch): the first Relay to pass the scan filters is
   connected and opened straight to the flag screen, no tap needed. Assumes a
   single Relay in the field; with more than one it takes the strongest
@@ -148,6 +157,43 @@ user-assignable per flag from the watch.
 ---
 
 ## History
+
+### 2026-09-13 — Alert 3 (short press) on the watch; delay unit and copy on iOS
+- The relay's notify byte bits 1–0 are a type field, and type `0x03` is a
+  **short press from either flag** — sent only when the relay's own
+  short-press setting is on. The watch previously fell through to "Unknown
+  alert source" and a single `.click`, so a short press was audible but
+  meaningless.
+- `shortPressHaptic` is a single preset rather than a per-flag pair, because
+  Alert 3 doesn't carry which flag was pressed. Defaults to `.tripleFailure`,
+  the one the two flags don't start on, so all three cues are distinct out of
+  the box.
+- Watch detail screen gains a third tile — a bolt glyph beside the two flags —
+  that cycles and previews the preset, ringed in the preset's colour like the
+  flag tiles. Enabled whenever the relay is active rather than per-flag, since
+  there's no per-flag link state to gate on. **The row now flexes instead of
+  using the old fixed 70pt tiles: three of those overflow every watch size.**
+- **Delay label unit fix:** the phone multiplied the raw field by 20 ms where
+  firmware steps in 30 (`CFG_SHTPRS_DELAY_STEP_MS`), so every displayed delay
+  was a third short — a slider at 10 read 200 ms for what the device treats as
+  300. Android carries the same bug; its twin doc covers it. The `[BLE] CFG`
+  log line had the same `* 20` and is corrected too.
+- Info panel rewritten to the three-type contract: on a Receiver or Relay the
+  setting relays short presses as their own alert type, and off means they
+  still arrive but as the normal Flag 1/2 alert. It takes both ends — the Flag
+  decides whether it sends a short press, the Receiver/Relay whether it
+  arrives as its own type.
+- The "will be introduced in firmware 2v0" preamble and the "SETTINGS NOT IN
+  USE" header are now gated on `firmwareVersionByteById >= 0x20`, so a 2.0
+  device reads "SHORT PRESS SETTINGS" and drops the disclaimer, while older
+  units still see the original framing.
+- **Verified on hardware (13 Sep):** a Receiver on RXRLY `10.1.0-dev.13` with
+  its short-press bit on emits Alert 3, and the watch plays `shortPressHaptic`
+  for it; the bolt tile cycles and previews the preset, and long presses still
+  play their slot presets unchanged.
+- Known, not fixed here: `isPlayingHaptic` has a 4-second cooldown, so a short
+  press landing inside that window after a slot alert is dropped by the watch
+  even though the relay sent it. Pre-existing.
 
 ### 2026-09-11 — Options menu: direct shop link replaces reseller sub-menu (iOS)
 - `rarebitofficial.com/shop` is live and rareBit sells direct, so the two
@@ -217,7 +263,15 @@ user-assignable per flag from the watch.
   `[FW] dev <tag> → <byte> build <n>`, `[FW] dev armed`, `[FW] dev cleared`.
 - Product mapping is the stable path's, so a receiver on RXRLY firmware
   fetches `RXRLY_` rather than `PRO_RX_`. Cross-grade via the dev channel is
-  out of scope.
+  out of scope. **Confirmed on hardware 13 Sep:** a Receiver on RXRLY resolved
+  `.rxrly`, fetched `RXRLY_v10.1.0-dev.13` (`0xa1`, build 13) and flashed to
+  `FWV 0xA1`.
+- One RXRLY dev install failed with "Release is missing asset …" and then
+  succeeded unchanged minutes later — consistent with fetching a freshly cut
+  release mid-publish, before CI had attached the `.bin` alongside the
+  `manifest.json` that names it. Not reproducible; the asset lookup now logs
+  the requested filename against the release's actual asset list so a repeat
+  is diagnosable in one line.
 - **Verified on hardware (9 Sep):** a v1.9 Flag fetched
   `PRO_FLAG_v2.0.0-dev.8` (`0x20`, build 8), downloaded it from the private
   repo through the asset API URL, passed SHA-256, uploaded over SMP, rebooted

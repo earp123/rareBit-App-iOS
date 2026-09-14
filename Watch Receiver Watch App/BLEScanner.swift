@@ -105,6 +105,12 @@ final class WatchBLEScanner: NSObject, ObservableObject{
     @Published private(set) var flag1Haptic: HapticPreset = .doubleNotification
     @Published private(set) var flag2Haptic: HapticPreset = .quadSuccess
 
+    /// Alert 3 — a short press from *either* flag. The relay doesn't say which
+    /// one, so this is a single preset rather than a per-flag pair. Defaults to
+    /// the one preset the two flags don't start on, so all three are distinct
+    /// out of the box.
+    @Published private(set) var shortPressHaptic: HapticPreset = .tripleFailure
+
     func cycleHaptic(for flag: Int) {
         switch flag {
         case 1:
@@ -113,6 +119,9 @@ final class WatchBLEScanner: NSObject, ObservableObject{
         case 2:
             flag2Haptic = flag2Haptic.next()
             Task { await flag2Haptic.play() }
+        case 3:
+            shortPressHaptic = shortPressHaptic.next()
+            Task { await shortPressHaptic.play() }
         default:
             break
         }
@@ -560,7 +569,10 @@ extension WatchBLEScanner: CBPeripheralDelegate {
             // --- Parse byte ---
             // Bit 7: Flag 1 linked
             // Bit 6: Flag 2 linked
-            // Bits 1..0: Alert source (0x01 = Flag 1, 0x02 = Flag 2, 0x00 = none)
+            // Bits 1..0: alert type — 0x00 link event only, 0x01 Alert 1
+            // (slot 1 long press), 0x02 Alert 2 (slot 2 long press), 0x03
+            // Alert 3 (short press from either flag; the relay doesn't say
+            // which, and only sends it when its own short-press setting is on)
             let linkBits = byte & 0xC0
             let alertBits = byte & 0x03
 
@@ -587,6 +599,9 @@ extension WatchBLEScanner: CBPeripheralDelegate {
             case 0x02:
                 preset = self.flag2Haptic
                 self.log("🔴 Flag 2 alert → \(preset.label)")
+            case 0x03:
+                preset = self.shortPressHaptic
+                self.log("⚡️ Short press alert → \(preset.label)")
             default:
                 self.log("⚪️ Unknown alert source: 0x\(String(format: "%02X", alertBits))")
                 WKInterfaceDevice.current().play(.click)

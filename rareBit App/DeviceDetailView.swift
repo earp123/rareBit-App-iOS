@@ -194,23 +194,27 @@ struct DeviceDetailView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 10) {
 
-                            Text("For information only! Features described below will be introduced in firmware 2v0.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            if !isOnShippingFirmware {
+                                Text("For information only! Features described below will be introduced in firmware 2v0.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
 
                             VStack(alignment: .leading, spacing: 8) {
                                 infoBlock(
                                     title: "Short Press Delay",
                                     body: """
-                Controls a brief delay between a button press and the actual page alert transmission. This can reduce nuisance alerts from short, accidental button presses. A delay value of 0 effectively disables the delay (any button press transmits immediately).
+                On a Flag, this is how long the button must be held before it counts as a normal alert. Presses shorter than the delay become short presses instead, which reduces nuisance alerts from accidental knocks. Adjusts in 30 ms steps; a value of 0 disables the delay, so any press transmits immediately as a normal alert.
                 """
                                 )
 
                                 infoBlock(
                                     title: "Short Press Alert",
                                     body: """
-                With Short Press Alert enabled, button presses shorter than the Short Press Delay value can intentionally send a different, more brief alert type to the Referee. For the additional alert type to occur, both the Flag and Receiver must have Short Press enabled. A Short Press Delay value of 0 effectively disables Short Press Alert.
+                On a Receiver or Relay, this relays short presses as their own alert type, so the referee's watch can give them a distinct buzz. Turn it off and short presses still arrive, but as the normal Flag 1 or Flag 2 alert.
+
+                It takes both ends: the Flag decides whether it sends a short press at all, and the Receiver or Relay decides whether that press arrives as its own alert type. A Short Press Delay of 0 on the Flag means it never sends one.
                 """
                                 )
                             }
@@ -255,7 +259,7 @@ struct DeviceDetailView: View {
                             .foregroundStyle(.secondary)
                         
                         VStack(alignment: .leading, spacing: 1) {
-                            Text("SETTINGS NOT IN USE")
+                            Text(isOnShippingFirmware ? "SHORT PRESS SETTINGS" : "SETTINGS NOT IN USE")
                                 .font(.footnote)
                                 .fontWeight(.bold)
                                 .foregroundStyle(.secondary)
@@ -659,7 +663,7 @@ struct DeviceDetailView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text("\(Int(uiShortPressDelay.rounded(.down)) * 20)")
+                            Text("\(Int(uiShortPressDelay.rounded(.down)) * shortPressDelayStepMs)")
                                 .font(.subheadline)
                                 .bold()
                         }
@@ -1010,6 +1014,19 @@ struct DeviceDetailView: View {
             }
         }
 #endif
+    }
+
+    /// Firmware's short-press delay field steps in 30 ms
+    /// (`CFG_SHTPRS_DELAY_STEP_MS`). The label multiplied by 20 and so
+    /// under-reported every value.
+    private var shortPressDelayStepMs: Int { 30 }
+
+    /// 2.0 is where these settings actually do something, so the "not in use /
+    /// coming in 2v0" framing only applies below it. Unknown version (no FWV
+    /// characteristic) is pre-2.0 by definition.
+    private var isOnShippingFirmware: Bool {
+        guard let byte = ble.firmwareVersionByteById(deviceId) else { return false }
+        return byte >= 0x20
     }
 
     /// Should show the DFU card?
