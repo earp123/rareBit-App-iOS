@@ -19,8 +19,10 @@ Relay, BLINK RED — exact-name matched in `RareBitFirmware.swift`).
 - **`FirmwareService` / DFU** — firmware updates over Nordic SMP (McuManager)
   using bundled `.bin` images and GitHub Releases as the update source. Two
   channels: the public repo (stable, unauthenticated, cached) and, in Debug
-  builds only, a PAT-authenticated development channel reading
-  `development`-branch pre-releases from the private firmware repo.
+  builds only, a PAT-authenticated development channel covering all four
+  products across two private repos — Flag/RX/RXRLY from
+  `rareBit-Flags-Receivers` (`development` branch), Relay from `rareBit-Relay`
+  (`main`). Each product carries its own repo, branch and tag prefix.
 - **`ScanListView` / `DeviceDetailView`** — device list and per-device
   config UI (short-press enable/delay, battery, DFU). Scan-list cards carry
   status pills (connected, battery fault or low, update available) and a
@@ -116,10 +118,21 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 ### iOS ↔ device: DFU (Nordic SMP / McuManager)
 - Service `8D53DC1D-1DB7-4CD3-868B-8A527460AA84`,
   characteristic `DA2E7828-FBCE-4E01-AE9E-261174997C48`
-- Standard MCUboot image upload via `iOSMcuManagerLibrary`. Firmware for all
-  products comes from the public `rareBit-firmware-releases` repo: releases
-  tagged `<product>-v<version>` (flag / rx / rxrly / relay), each carrying a
-  `manifest.json`; SMP products flash the SHA-256-verified `ota_image` .bin.
+- Standard MCUboot image upload via `iOSMcuManagerLibrary`. Stable firmware
+  for all products comes from the public `rareBit-firmware-releases` repo:
+  releases tagged `<product>-v<version>` (flag / rx / rxrly / relay), each
+  carrying a `manifest.json`; SMP products flash the SHA-256-verified
+  `ota_image` .bin, the Relay the `dfu_package` zip over legacy DFU.
+- Development builds (Debug only) come from the private repos instead:
+
+| Product | Repo | Branch | Tag | Flashes |
+|---------|------|--------|-----|---------|
+| flag / rx / rxrly | `rareBit-Flags-Receivers` | `development` | `PRO_FLAG_` / `PRO_RX_` / `RXRLY_` `v M.N.P-dev.<n>` | `ota_image` .bin over SMP |
+| relay | `rareBit-Relay` | `main` | `RELAY_v M.N-dev.<n>` | `dfu_package` zip over legacy DFU |
+
+  Private-repo assets are fetched through the asset API `url` with
+  `Accept: application/octet-stream` and the PAT; SHA-256 verification is
+  unchanged and mandatory on both channels.
 
 ---
 
@@ -157,6 +170,48 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 ---
 
 ## History
+
+### 2026-09-14 — Relay joins the development channel (iOS)
+- The Relay reaches dev builds through the same 3-second hold as the other
+  products, but its controls live on the **Relay firmware card**, not the SMP
+  DFU card — it has its own card and its own legacy-DFU flash sequence, so
+  routing it through the SMP path would have been wrong. `devChannelMode` now
+  excludes the Relay and `relayDevChannelMode` covers it.
+- `FirmwareProduct.devTagPrefix` is replaced by a **per-product dev source** —
+  repo URL, branch, tag prefix. The Relay differs on all three: its own
+  private repo, published from `main` rather than `development`, tagged
+  `RELAY_` with a two-part version. `latestDevRelease` reads all three from
+  the product rather than hard-coding one repo and branch.
+- Install runs the existing legacy-DFU sequence against the armed release:
+  `downloadVerifiedPackage` (SHA-256 mandatory) → `0xA8` trigger → `1530`
+  bootloader scan → flash → reconnect → FWV confirm. No version gate, and
+  `relayUpdateAvailable` isn't consulted — dev builds share a pinned version
+  byte, so the developer's choice is the only input.
+- `FirmwareVersion.init(_:)` strips `RELAY_v`. Without it a `RELAY_v2.0` tag
+  parsed as 0.0, because the generic `v` strip leaves `RELAY_2.0` and the
+  major component fails to parse.
+- Errors got more useful on the way through: `noDevReleaseOnBranch` names the
+  branch that came up empty (`main` vs `development`) instead of assuming one,
+  and a failed dev request now reports the **HTTP status** — with 404 called
+  out as "the token may not have access", since GitHub returns 404 rather than
+  403 for a private repo the PAT can't see. That's the exact failure mode when
+  a token's repository list is missing one of the two repos.
+- Stable path untouched: `latestRelease(for: .relay)` still reads the public
+  repo by `relay-v`, still cached, still version-gated. The dev fetch writes
+  neither `cached` nor `cachedReleaseList`.
+- Release-configuration binary re-checked: no token-shaped string, no
+  `githubPAT` symbol, and **neither** private repo URL — `rareBit-Relay`
+  included, since the per-product dev source is inside `#if DEBUG`.
+- **Verified on hardware (14 Sep):** a docked Relay fetched
+  `RELAY_v2.0-dev.1` (`0x20`, build 1) from `rareBit-Relay`, verified
+  `rareBit-Relay-v2.0-dev.1-dfu.zip` (261013 bytes), triggered, flashed over
+  legacy DFU in 88 s, validated, reset and reconnected. `[FW] dev cleared`
+  fired on the reboot. Before the hold, the same Relay's card still resolved
+  `relay-v2.0` from the public repo and reported up to date.
+- Worth knowing: the version byte is pinned per stream, so a dev Relay build
+  and stable v2.0 both read `0x20`. `confirmRelayVersion` therefore can't tell
+  them apart — the successful flash is the evidence, not the version readback,
+  and "Version confirmed: 0x20" is weaker than it looks on this path.
 
 ### 2026-09-13 — Alert 3 (short press) on the watch; delay unit and copy on iOS
 - The relay's notify byte bits 1–0 are a type field, and type `0x03` is a
