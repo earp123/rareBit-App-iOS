@@ -1097,9 +1097,7 @@ final class BleScanner: NSObject, ObservableObject {
             return
         }
 
-        // ✅ Choose a base byte that preserves device-reported bits (battery etc.)
-        // Prefer characteristic cached value, then our persisted map.
-        let baseByte: UInt8? = ch.value?.first ?? configByteById[deviceId]
+        let baseByte = cfgBaseByte(for: deviceId, ch)
 
         // If we don't have any known base, do NOT write — we'd accidentally write 0x00.
         guard var newByte = baseByte else {
@@ -1143,6 +1141,16 @@ final class BleScanner: NSObject, ObservableObject {
 
 
     // MARK: - PACKING HELPERS
+
+    /// The byte a CFG write builds on: our own map first, then the
+    /// characteristic's cached value. The map carries every earlier write,
+    /// but `ch.value` only changes on a device read or notify — and firmware
+    /// doesn't notify after a client write. Basing on `ch.value` let a second
+    /// write undo the first (set a delay, then toggle Short Press Alert, and
+    /// the delay went back to 0 on the device).
+    private func cfgBaseByte(for deviceId: UUID, _ ch: CBCharacteristic) -> UInt8? {
+        configByteById[deviceId] ?? ch.value?.first
+    }
     // Adjust these masks/shifts to match your DeviceConfig layout if different.
 
     private let CFG_SHORT_PRESS_MASK: UInt8 = 0b0000_0001     // bit0
@@ -1182,8 +1190,7 @@ final class BleScanner: NSObject, ObservableObject {
         }
 
         // ✅ Base byte must come from a real source to preserve battery/unknown bits.
-        // Prefer CB's cached value for this characteristic, then our persisted map.
-        guard let base = (ch.value?.first ?? configByteById[deviceId]) else {
+        guard let base = cfgBaseByte(for: deviceId, ch) else {
             print("[BLE] setShortPressEnabled aborted: no base byte yet for \(deviceId)")
             return
         }
@@ -1227,7 +1234,7 @@ final class BleScanner: NSObject, ObservableObject {
         }
 
         // ✅ Must have a real base byte; never fall back to 0x00.
-        guard let base = (ch.value?.first ?? configByteById[deviceId]) else {
+        guard let base = cfgBaseByte(for: deviceId, ch) else {
             print("[BLE] setShortPressDelay aborted: no base byte yet for \(deviceId)")
             return
         }
@@ -1819,8 +1826,9 @@ extension BleScanner: CBPeripheralDelegate {
         guard characteristic.uuid == cfgUuids.cfg_characteristic else { return }
         if let error {
             print("Config write error: \(error.localizedDescription)")
-            // On error, request a fresh read to sync UI with device
-            
+            // The optimistic byte in configByteById never reached the device;
+            // re-read so the UI and the next write's base match it again.
+            peripheral.readValue(for: characteristic)
         } else {
             print("[BLE] CFG write success")
         }
