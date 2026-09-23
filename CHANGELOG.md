@@ -189,6 +189,12 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
   behaviour, and the `.bluetoothAlert` task has never fired. Getting that
   task working would need `UIBackgroundModes` → `bluetooth-central`, which is
   untested and left out of this release.
+- Export compliance was answered in App Store Connect as "None of the
+  algorithms mentioned above": the only encryption is Apple's own (HTTPS, plus
+  a CryptoKit SHA-256 check on firmware downloads), and no dependency encrypts.
+  After submission, the iOS target gained
+  `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO`, so future uploads skip
+  the question. Revisit it if an encryption library is ever added.
 
 ### 2026-09-22 — SUB⚡ corner tile, single-tap short press, stoppage reminder (watch)
 - **Triage — short press not felt on a Relay:** the watch log on the
