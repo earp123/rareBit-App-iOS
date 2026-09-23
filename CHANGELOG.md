@@ -6,7 +6,7 @@ All notable changes to this project are documented here. Dates are ISO 8601.
 
 ## App Architecture
 
-One Xcode project, two apps sharing a bundle (`rareBit.Watch-Receiver` v2.0.1):
+One Xcode project, two apps sharing a bundle (`rareBit.Watch-Receiver` v2.0.2):
 
 ### iOS app — `rareBit App/` (target: *Watch Receiver*)
 Companion/management app for the rareBit device family (PRO Flag, PRO Receiver,
@@ -174,6 +174,14 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 ---
 
 ## History
+
+### 2026-09-22 — v2.0.2 (build 2) to App Store review
+- First App Store build since 2.0.1 (live 16 Jun). Both app targets move to
+  `MARKETING_VERSION` 2.0.2 and `CURRENT_PROJECT_VERSION` 2. Release is
+  automatic once approved.
+- What's New is limited to the watch: short-press alerts, the stoppage log
+  with its 20 s reminder, count-up through pauses, and the background expiry
+  alarm. Phone changes ship too but aren't listed.
 
 ### 2026-09-22 — SUB⚡ corner tile, single-tap short press, stoppage reminder (watch)
 - **Triage — short press not felt on a Relay:** the watch log on the
