@@ -31,19 +31,20 @@ final class MatchTimer: ObservableObject {
     /// watch left on the bench doesn't buzz itself flat.
     private static let maxAlarmDuration: TimeInterval = 5 * 60
 
-    // MARK: - Pause reminder tuning
+    // MARK: - Reminder tuning
 
-    /// How often the wrist is reminded that the countdown is still paused.
-    private static let pauseReminderInterval: Duration = .seconds(20)
+    /// How often the wrist is reminded that the countdown is still paused,
+    /// or that a stoppage segment is still timing.
+    private static let reminderInterval: Duration = .seconds(20)
 
     /// Gap between the three taps of one reminder. Tight enough that the
     /// burst reads as a single triple tap, but not so tight that three
     /// `.notification` haptics — which are long — smear into one buzz.
-    private static let pauseReminderTapGap: Duration = .milliseconds(300)
+    private static let reminderTapGap: Duration = .milliseconds(300)
 
     /// Reminders give up after this long so a watch left paused on the bench
     /// doesn't tap all night.
-    private static let maxPauseReminderDuration: TimeInterval = 30 * 60
+    private static let maxReminderDuration: TimeInterval = 30 * 60
 
     // MARK: - Settings
 
@@ -121,7 +122,7 @@ final class MatchTimer: ObservableObject {
     private var cancellable: AnyCancellable?
     private var alarmTask: Task<Void, Never>?
     private var autoSilenceTask: Task<Void, Never>?
-    private var pauseReminderTask: Task<Void, Never>?
+    private var reminderTask: Task<Void, Never>?
 
     /// Plays the expiry haptics even when the app is backgrounded, and makes
     /// wrist-raise return to the app while it's sounding.
@@ -140,10 +141,10 @@ final class MatchTimer: ObservableObject {
 
     func start() {
         stopAlarm()
-        stopPauseReminder()
         runStartDate = Date()
         elapsedAnchor = runStartDate.addingTimeInterval(-accumulatedSeconds)
         state = .running
+        restartReminder()   // stops, unless a stoppage segment is still open
         resumeCountUp()   // no-op when a pause already left it running
         syncTicker()
 
@@ -159,12 +160,12 @@ final class MatchTimer: ObservableObject {
         alarmSession.cancel()
         if !countUpContinuesWhilePaused { freezeCountUp() }
         syncTicker()
-        startPauseReminder()
+        restartReminder()
     }
 
     func reset() {
         stopAlarm()
-        stopPauseReminder()
+        stopReminder()
         state = .idle
         accumulatedSeconds = 0
         displaySeconds = matchDuration
@@ -246,6 +247,7 @@ final class MatchTimer: ObservableObject {
             refreshStoppageSeconds()
             WKInterfaceDevice.current().play(.click)
         }
+        restartReminder()
     }
 
     /// Fold any open segment into the total. Silent — expiry calls it too,
@@ -319,30 +321,37 @@ final class MatchTimer: ObservableObject {
         }
     }
 
-    // MARK: - Pause reminder
+    // MARK: - Reminder
 
-    /// While the countdown sits paused, tap the wrist every
-    /// `pauseReminderInterval` so a stoppage can't be forgotten. Deliberately
-    /// starts one full interval after the pause — the referee just tapped the
-    /// screen, they know.
-    private func startPauseReminder() {
-        stopPauseReminder()
-        pauseReminderTask = Task { [weak self] in
-            let deadline = Date().addingTimeInterval(Self.maxPauseReminderDuration)
+    /// Something the referee opened is still open: a paused countdown, or a
+    /// stoppage segment still timing on a running one. Either can be
+    /// forgotten, so either keeps the wrist reminder going.
+    private var needsReminder: Bool { state == .paused || isStoppageOpen }
+
+    /// Tap the wrist every `reminderInterval` while `needsReminder` holds.
+    /// Called at every pause, resume and stoppage tap, and deliberately
+    /// restarts one full interval out — the referee just touched the clock,
+    /// they know. One loop covers both causes, so a stoppage left open
+    /// through a pause never double-taps.
+    private func restartReminder() {
+        stopReminder()
+        guard needsReminder else { return }
+        reminderTask = Task { [weak self] in
+            let deadline = Date().addingTimeInterval(Self.maxReminderDuration)
             while !Task.isCancelled {
-                try? await Task.sleep(for: Self.pauseReminderInterval)
+                try? await Task.sleep(for: Self.reminderInterval)
                 guard !Task.isCancelled,
                       let self,
-                      self.state == .paused,
+                      self.needsReminder,
                       Date() < deadline else { return }
-                await self.playPauseReminder()
+                await self.playReminder()
             }
         }
     }
 
-    private func stopPauseReminder() {
-        pauseReminderTask?.cancel()
-        pauseReminderTask = nil
+    private func stopReminder() {
+        reminderTask?.cancel()
+        reminderTask = nil
     }
 
     /// Three taps — the closest WatchKit gets to a literal triple tap.
@@ -351,12 +360,12 @@ final class MatchTimer: ObservableObject {
     /// `doubleNotification` flag preset and the expiry alarm use, rhythm is
     /// what separates the three cues: a tight burst of exactly three, once
     /// every 20s, against the flag's slow pair and the alarm's continuous buzz.
-    private func playPauseReminder() async {
+    private func playReminder() async {
         let device = WKInterfaceDevice.current()
         for tap in 0..<3 {
             device.play(.notification)
             guard tap < 2 else { break }
-            try? await Task.sleep(for: Self.pauseReminderTapGap)
+            try? await Task.sleep(for: Self.reminderTapGap)
             guard !Task.isCancelled else { return }
         }
     }

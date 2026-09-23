@@ -8,27 +8,33 @@ struct DeviceDetailView: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 10) {
 
-            // Header area
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(device.name.replacingOccurrences(of: "rareBit ", with: ""))
-                    .font(.headline)
-                    .lineLimit(1)
-                    .fontWeight(.semibold)
+            // Header area — the short-press tile takes the free corner
+            // opposite the status text, so the flags keep the full width.
+            HStack(alignment: .top, spacing: 4) {
+                subTile
 
-                Text(relay.isConnected ? "Connected" : "Connecting…")
-                    .font(.footnote)
+                Spacer(minLength: 0)
 
-                Text(relay.isActive ? "Active" : "Inactive")
-                    .font(.footnote)
-                    .foregroundStyle(relay.isActive ? .primary : .secondary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(device.name.replacingOccurrences(of: "rareBit ", with: ""))
+                        .font(.headline)
+                        .lineLimit(1)
+                        .fontWeight(.semibold)
+
+                    Text(relay.isConnected ? "Connected" : "Connecting…")
+                        .font(.footnote)
+
+                    Text(relay.isActive ? "Active" : "Inactive")
+                        .font(.footnote)
+                        .foregroundStyle(relay.isActive ? .primary : .secondary)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity)
 
-            // Per-flag link status, plus the short-press tile
+            // Flag link status icons
             HStack(spacing: 4) {
                 flagIcon(flag: 1, linked: relay.flag1Linked, preset: relay.flag1Haptic)
                 flagIcon(flag: 2, linked: relay.flag2Linked, preset: relay.flag2Haptic)
-                shortPressIcon
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -50,9 +56,9 @@ struct DeviceDetailView: View {
             Image("FLAG")
                 .resizable()
                 .scaledToFit()
+                .frame(width: 70, height: 70)
                 .opacity(linked ? 1.0 : 0.15)
                 .padding(6)
-                .frame(maxWidth: .infinity, maxHeight: tileHeight)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(linked ? preset.color : .gray.opacity(0.2), lineWidth: 2)
@@ -62,33 +68,30 @@ struct DeviceDetailView: View {
         .disabled(!linked)
     }
 
-    /// Alert 3 — a short press from either flag. Enabled whenever the relay is
-    /// active rather than per-flag: the notify byte doesn't say which flag was
-    /// pressed, so there's no link state to gate on.
-    @ViewBuilder
-    private var shortPressIcon: some View {
+    /// Alert 3 — a short press from either flag. Cycles and previews the
+    /// single-tap preset. Enabled whenever the relay is active rather than
+    /// per-flag: the notify byte doesn't say which flag was pressed, so there's
+    /// no link state to gate on.
+    private var subTile: some View {
         Button {
             relay.cycleHaptic(for: 3)
         } label: {
-            Image(systemName: "bolt.fill")
-                .resizable()
-                .scaledToFit()
-                .foregroundStyle(.white)
-                .opacity(relay.isActive ? 1.0 : 0.15)
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: tileHeight)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(relay.isActive ? relay.shortPressHaptic.color : .gray.opacity(0.2),
-                                lineWidth: 2)
-                )
+            HStack(spacing: 1) {
+                Text("SUB")
+                Image(systemName: "bolt.fill")
+            }
+            .font(.system(size: 13, weight: .heavy, design: .rounded))
+            .foregroundStyle(.white)
+            .opacity(relay.isActive ? 1.0 : 0.15)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 6)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(relay.isActive ? relay.shortPressHaptic.color : .gray.opacity(0.2),
+                            lineWidth: 2)
+            )
         }
         .buttonStyle(.plain)
         .disabled(!relay.isActive)
     }
-
-    /// Three tiles have to share the width, so they flex rather than sitting at
-    /// the fixed 70pt the two flags used to take — 3 x 70 overflows every watch
-    /// size. The cap keeps them from ballooning on the larger cases.
-    private var tileHeight: CGFloat { 76 }
 }
