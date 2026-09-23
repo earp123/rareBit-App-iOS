@@ -6,7 +6,7 @@ All notable changes to this project are documented here. Dates are ISO 8601.
 
 ## App Architecture
 
-One Xcode project, two apps sharing a bundle (`rareBit.Watch-Receiver` v2.0.2):
+One Xcode project, two apps sharing a bundle (`rareBit.Watch-Receiver` v2.0.3):
 
 ### iOS app — `rareBit App/` (target: *Watch Receiver*)
 Companion/management app for the rareBit device family (PRO Flag, PRO Receiver,
@@ -174,6 +174,15 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 ---
 
 ## History
+
+### 2026-09-23 — v2.0.3 (build 3) to App Store review
+- 2.0.2 was approved before the Short Press Delay fix (PR #12) landed, so the
+  fix goes out as a patch: both app targets move to `MARKETING_VERSION`
+  2.0.3 and `CURRENT_PROJECT_VERSION` 3. Release is automatic once approved.
+- First upload carrying `ITSAppUsesNonExemptEncryption = NO`, so App Store
+  Connect shouldn't ask the export compliance question.
+- What's New is limited to the iPhone delay fix. The watch is unchanged since
+  2.0.2.
 
 ### 2026-09-23 — Short Press Delay now reaches the Flag (iOS)
 - **The delay slider never wrote to the device.** It only moved local view
