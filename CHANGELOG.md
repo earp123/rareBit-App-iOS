@@ -58,7 +58,7 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
   edit screen carries the duration, period, the count-up-through-pause
   toggle (stopwatch glyph, bottom-left) and the Stoppage capsule (top-right).
 - Background modes (`Watch-Receiver-Watch-App-Info.plist`):
-  `workout-processing`, `alarm`, `bluetooth-alert`.
+  `workout-processing`, `alarm`.
 
 ---
 
@@ -182,6 +182,13 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 - What's New is limited to the watch: short-press alerts, the stoppage log
   with its 20 s reminder, count-up through pauses, and the background expiry
   alarm. Phone changes ship too but aren't listed.
+- **Upload blocker fixed:** App Store Connect rejected the first upload
+  (ITMS-90362) because `WKBackgroundModes` held `bluetooth-alert`, which isn't
+  a valid value. It came in on 22 Aug, after 2.0.1, so this was the first
+  upload to hit it. It never did anything, so removing it changes no
+  behaviour, and the `.bluetoothAlert` task has never fired. Getting that
+  task working would need `UIBackgroundModes` → `bluetooth-central`, which is
+  untested and left out of this release.
 
 ### 2026-09-22 — SUB⚡ corner tile, single-tap short press, stoppage reminder (watch)
 - **Triage — short press not felt on a Relay:** the watch log on the
