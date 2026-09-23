@@ -65,8 +65,9 @@ struct ContentView: View {
                 .onDisappear {
                     // Keep the session while a match is under way — running or
                     // paused: it's what gives background runtime, wrist-raise
-                    // return-to-app, and haptics off-screen (the pause
-                    // reminder taps while the countdown sits stopped).
+                    // return-to-app, and haptics off-screen (the 20 s
+                    // reminder taps while the countdown sits stopped or a
+                    // stoppage segment is timing).
                     if !matchTimer.isActive { workoutManager.stopSession() }
                 }
             }

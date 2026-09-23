@@ -39,10 +39,36 @@ enum HapticPreset: Int, CaseIterable {
         }
     }
 
+    /// Alert 3's name for the preset — the same haptic, played once.
+    var singleLabel: String {
+        switch self {
+        case .doubleNotification: return "Single notification"
+        case .quadSuccess:        return "Single success"
+        case .tripleFailure:      return "Single failure"
+        }
+    }
+
+    /// The haptic each pattern repeats.
+    var hapticType: WKHapticType {
+        switch self {
+        case .doubleNotification: return .notification
+        case .quadSuccess:        return .success
+        case .tripleFailure:      return .failure
+        }
+    }
+
     func next() -> HapticPreset {
         let all = HapticPreset.allCases
         let nextIndex = (self.rawValue + 1) % all.count
         return all[nextIndex]
+    }
+
+    /// One tap of the pattern's haptic, not the whole pattern — how Alert 3
+    /// (short press) plays its preset, so it can't be mistaken for a flag's
+    /// repeated alert.
+    @MainActor
+    func playOnce() {
+        WKInterfaceDevice.current().play(hapticType)
     }
 
     @MainActor
@@ -106,9 +132,10 @@ final class WatchBLEScanner: NSObject, ObservableObject{
     @Published private(set) var flag2Haptic: HapticPreset = .quadSuccess
 
     /// Alert 3 — a short press from *either* flag. The relay doesn't say which
-    /// one, so this is a single preset rather than a per-flag pair. Defaults to
-    /// the one preset the two flags don't start on, so all three are distinct
-    /// out of the box.
+    /// one, so this is a single preset rather than a per-flag pair, and it
+    /// plays as one tap (`playOnce`) rather than the repeated pattern. Defaults
+    /// to the one haptic the two flags don't start on, so all three are
+    /// distinct out of the box.
     @Published private(set) var shortPressHaptic: HapticPreset = .tripleFailure
 
     func cycleHaptic(for flag: Int) {
@@ -121,7 +148,7 @@ final class WatchBLEScanner: NSObject, ObservableObject{
             Task { await flag2Haptic.play() }
         case 3:
             shortPressHaptic = shortPressHaptic.next()
-            Task { await shortPressHaptic.play() }
+            shortPressHaptic.playOnce()
         default:
             break
         }
@@ -591,25 +618,22 @@ extension WatchBLEScanner: CBPeripheralDelegate {
             guard !isPlayingHaptic else { return }
             isPlayingHaptic = true
 
-            let preset: HapticPreset
             switch alertBits {
             case 0x01:
-                preset = self.flag1Haptic
-                self.log("🔵 Flag 1 alert → \(preset.label)")
+                self.log("🔵 Flag 1 alert → \(self.flag1Haptic.label)")
+                await self.flag1Haptic.play()
             case 0x02:
-                preset = self.flag2Haptic
-                self.log("🔴 Flag 2 alert → \(preset.label)")
+                self.log("🔴 Flag 2 alert → \(self.flag2Haptic.label)")
+                await self.flag2Haptic.play()
             case 0x03:
-                preset = self.shortPressHaptic
-                self.log("⚡️ Short press alert → \(preset.label)")
+                self.log("⚡️ Short press alert → \(self.shortPressHaptic.singleLabel)")
+                self.shortPressHaptic.playOnce()
             default:
                 self.log("⚪️ Unknown alert source: 0x\(String(format: "%02X", alertBits))")
                 WKInterfaceDevice.current().play(.click)
                 isPlayingHaptic = false
                 return
             }
-
-            await preset.play()
 
             Task {
                 try? await Task.sleep(nanoseconds: hapticCooldown)

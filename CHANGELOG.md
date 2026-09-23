@@ -45,14 +45,14 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
   scheduled smart-alarm `WKExtendedRuntimeSession` (`SmartAlarmSession`)
   buzzes from the background until acknowledged, with an in-process haptic
   loop as foreground fallback and a 5-minute auto-silence cap. Also owns the
-  paused-state reminder (triple `.notification` every 20s, 30-minute cap) and
-  the stoppage log — opened/closed delay segments summing to `stoppageTotal`,
+  20 s reminder (triple `.notification` while paused or while a stoppage
+  segment is open, 30-minute cap) and the stoppage log — opened/closed delay segments summing to `stoppageTotal`,
   closed automatically on expiry.
 - **`WorkoutManager`** — `HKWorkoutSession` wrapper. An active session gives
   background runtime (BLE + timer keep running) and makes wrist-raise return
   to the app instead of the watch face. Runs whenever a device is connected,
   playback is open, or a match is under way — including while paused, which
-  is what lets the pause reminder tap off-screen.
+  is what lets the 20 s reminder tap off-screen.
 - **`TimerView`** — countdown UI; ticker-driven text (stays populated in the
   always-on dim state), full-screen TAP-TO-STOP alarm state on expiry. The
   edit screen carries the duration, period, the count-up-through-pause
@@ -80,8 +80,9 @@ On-wrist receiver a referee wears during a match. Two swipeable UI paths
 Alerts trigger a haptic preset (cooldown-gated). Presets (`HapticPreset`):
 Double `.notification` / Quad `.success` / Triple `.failure`, user-assignable
 from the watch — one per flag, plus one for Alert 3. Alert 3 doesn't say which
-flag was pressed, so it gets a single shared preset, and the relay only sends
-it when its own short-press setting is on.
+flag was pressed, so it gets a single shared preset, played as **one tap** of
+that preset's haptic rather than the repeated pattern. The relay only sends it
+when its own short-press setting is on.
 
 ### iOS ↔ device: short-press delay
 The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
@@ -151,15 +152,18 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
   on, a tap on a *running* clock no longer pauses — it opens a delay segment,
   and the next tap closes it. Injuries, VAR and substitutions get logged as an
   orange `+MM:SS` running total under the count-up while the match clock keeps
-  going; pause moves to a long-press. A distinct setting from the count-up
-  overlay above, which is unaffected.
+  going; pause moves to a long-press. While a segment is open, the same
+  20-second triple tap as a paused countdown reminds the wrist to close it.
+  A distinct setting from the count-up overlay above, which is unaffected.
 - **Expiry alarm** (watch): near-continuous heavy haptics from foreground or
   background until acknowledged by a screen tap anywhere; dedicated full-screen
   acknowledge UI; 5-minute auto-silence safety cap.
 - **Flag alerts** (watch): Relay pushes flag events; assignable haptic presets
   with playback testing — one per flag, plus one for Alert 3 (a short press
-  from either flag, which the relay sends only when its own short-press
-  setting is on); link-status display for both flags.
+  from either flag, played as a single tap, which the relay sends only when
+  its own short-press setting is on); link-status display for both flags.
+  Alert 3's preset is set from the small SUB⚡ tile in the detail screen's
+  top-left corner.
 - **Auto-connect** (watch): the first Relay to pass the scan filters is
   connected and opened straight to the flag screen, no tap needed. Assumes a
   single Relay in the field; with more than one it takes the strongest
@@ -170,6 +174,34 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 ---
 
 ## History
+
+### 2026-09-22 — SUB⚡ corner tile, single-tap short press, stoppage reminder (watch)
+- **Triage — short press not felt on a Relay:** the watch log on the
+  dedicated `rareBit Relay` shows every press arriving as `0xC1` / `0xC2`,
+  never `0xC3`. The watch side is fine. The Relay firmware never got Alert 3:
+  `rareBit-Relay`'s `feature/short-press-alert` holds only the task doc, and
+  its `main` has no alert-type parse. On a Relay, a short press therefore
+  plays the flag's slot preset. RXRLY (`10.1.0-dev.13`) does send Alert 3
+  (13 Sep entry).
+- Detail screen goes back to **two fixed 70pt flag tiles**. The short-press
+  control becomes a small rectangular **SUB⚡** tile in the header's
+  top-left corner, beside the status text, ringed in its preset's colour. It
+  still cycles and previews the preset, and is still enabled whenever the
+  relay is active.
+- **Alert 3 plays one tap** of its preset's haptic (`HapticPreset.playOnce()`
+  → `.notification` / `.success` / `.failure`), not the Double/Quad/Triple
+  pattern, so a short press reads as the lesser call next to the flags'
+  repeated alerts. The flag presets are unchanged.
+- **Stoppage reminder:** an open stoppage segment now gets the same triple tap
+  every 20 s as a paused countdown. One loop (`restartReminder`, gated on
+  `needsReminder` = paused *or* segment open) serves both, so a segment
+  left open through a pause never double-taps. The loop restarts one full
+  interval out on every pause, resume and stoppage tap, and stops when the
+  segment closes, on reset, and on expiry.
+- **Verified on wrist (22 Sep):** layout, single-tap SUB⚡ cycling, and the
+  stoppage reminder (taps at ~20 s and ~40 s, silent once closed). Alert 3
+  itself can't be exercised on a Relay until its firmware lands; it needs a
+  Receiver on RXRLY to test.
 
 ### 2026-09-14 — Relay joins the development channel (iOS)
 - The Relay reaches dev builds through the same 3-second hold as the other
