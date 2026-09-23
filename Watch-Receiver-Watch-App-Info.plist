@@ -10,7 +10,6 @@
 	<array>
 		<string>workout-processing</string>
 		<string>alarm</string>
-		<string>bluetooth-alert</string>
 	</array>
 </dict>
 </plist>
