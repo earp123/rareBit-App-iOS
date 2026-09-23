@@ -690,7 +690,13 @@ struct DeviceDetailView: View {
                         Slider(
                             value: $uiShortPressDelay,
                             in: 0...15,
-                            step: 1
+                            step: 1,
+                            onEditingChanged: { editing in
+                                // Write once on release, not on every step
+                                // of the drag.
+                                guard !editing else { return }
+                                ble.setShortPressDelay(UInt8(uiShortPressDelay.rounded()), for: deviceId)
+                            }
                         )
                         .disabled(!isConnectedToThisDevice)
                     }

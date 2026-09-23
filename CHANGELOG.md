@@ -175,6 +175,27 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 
 ## History
 
+### 2026-09-23 — Short Press Delay now reaches the Flag (iOS)
+- **The delay slider never wrote to the device.** It only moved local view
+  state; nothing called `setShortPressDelay`, going back to the initial
+  commit. Re-opening the detail view re-read the Flag's real value, so a
+  delay set on a Flag at 0 "slammed back" to 0. The slider now writes once
+  on release (`onEditingChanged`), not on every step of the drag.
+- **Writes no longer undo each other.** Every CFG write took its base byte
+  from `ch.value` first, CoreBluetooth's last *device-reported* value.
+  Firmware doesn't notify after a client write, so that stays stale until
+  the next battery notify, and a second write reverted the first. For
+  example, setting a delay and then toggling Short Press Alert wrote the
+  delay back to 0. Writes now base on `configByteById`, which carries every
+  earlier write as well as every read and notify (`cfgBaseByte`). Battery
+  bits 6–7 are unaffected: firmware masks client writes to bits 0–5.
+- A failed CFG write now re-reads the characteristic, as the old comment
+  intended, so the optimistic byte can't linger as the next write's base.
+- **Verified on hardware (23 Sep):** a docked Flag keeps its delay across
+  leaving and re-opening the detail view and across a Short Press Alert
+  toggle, and a cold app relaunch reads it back from the Flag (`0x8D`:
+  short press on, delay 3 = 90 ms).
+
 ### 2026-09-22 — v2.0.2 (build 2) to App Store review
 - First App Store build since 2.0.1 (live 16 Jun). Both app targets move to
   `MARKETING_VERSION` 2.0.2 and `CURRENT_PROJECT_VERSION` 2. Release is
