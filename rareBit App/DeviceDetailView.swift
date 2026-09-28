@@ -900,6 +900,7 @@ struct DeviceDetailView: View {
     private func iconName(for name: String) -> String? {
         if name.localizedCaseInsensitiveContains("Flag") { return "FlagIcon" }
         if name.localizedCaseInsensitiveContains("Receiver") { return "Rx Icon" }
+        if name.localizedCaseInsensitiveContains("Relay") { return "Relay Icon" }
         return nil
     }
     

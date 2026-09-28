@@ -243,6 +243,7 @@ struct ScanListView: View {
     private func iconName(for deviceName: String) -> String? {
         if deviceName.localizedCaseInsensitiveContains("Flag") { return "FlagIcon" }
         if deviceName.localizedCaseInsensitiveContains("Receiver") { return "Rx Icon" }
+        if deviceName.localizedCaseInsensitiveContains("Relay") { return "Relay Icon" }
         return nil
     }
 }
