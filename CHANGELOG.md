@@ -175,6 +175,20 @@ The CFG byte's delay field steps in **30 ms** (`CFG_SHTPRS_DELAY_STEP_MS`), not
 
 ## History
 
+### 2026-09-27 — Relay icon on the scan list and detail screen (iOS)
+- Relays showed no device icon. Flags and Receivers already had one. New
+  `Relay Icon` imageset, and both `iconName(for:)` lookups (scan-list card
+  and detail header) map names containing "Relay" to it.
+- Asset is the Android app's `ic_relay.png`, the drawable Android already
+  shows for Relay cards and detail. Same white line art as the iOS Flag and
+  Receiver icons, 178 × 408, so it's sharp at the 48–56 pt the app draws.
+  The repo-root `Relay Icon.png` / `.svg` in rareBit-Android is the same
+  drawing on a 960 × 540 canvas, and the SVG has a black background baked in.
+- Receivers on RXRLY firmware still advertise `rareBit PRO Receiver`, so the
+  "Relay" match can't catch one.
+- **Verified on hardware (27 Sep):** icon shows on the scan-list card and the
+  Relay detail header.
+
 ### 2026-09-23 — v2.0.3 (build 3) to App Store review
 - 2.0.2 was approved before the Short Press Delay fix (PR #12) landed, so the
   fix goes out as a patch: both app targets move to `MARKETING_VERSION`
