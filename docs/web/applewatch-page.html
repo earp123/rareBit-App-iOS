@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple Watch | rareBitOfficial</title>
+<script>(function(){if(new URLSearchParams(location.search).has('embed')){document.documentElement.classList.add('embed');}addEventListener('DOMContentLoaded',function(){document.querySelectorAll('a[href^="http"]').forEach(function(a){if(a.target)return;a.target=/rarebitofficial\.com/.test(a.href)?'_top':'_blank';if(a.target==='_blank'){a.rel='noopener';}});});})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<!--
+  rareBit page template (Apple Watch) — strict black / white, CMY accents only as a whisper.
+  The icon sprite is traced 1:1 from the slide-deck PNGs (960x540); every <use> below sits at its
+  slide-pixel position, so a scene viewBox of "0 118 960 290" reproduces a slide verbatim.
+  All four sets, ready to paste, live in rareBit-Garmin/docs/web/rarebit-icons.html:
+    Flags + Receiver (vibration alerts), Flags + Relay, Flags + RXRLY, Flags + Bangle.js 2.
+  Accent use: cyan = signal pulse, magenta = the watch buzz, yellow = download hover. Nothing else.
+-->
+<style>
+  :root{
+    --bg:#000;
+    --fg:#FFF;
+    --mute:#9A9A9A;
+    --line:rgba(255,255,255,.22);
+    --cyan:#00FFFF;
+    --magenta:#FF00FF;
+    --yellow:#FFFF00;
+    --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
+    --mono:'Courier Prime',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;background:var(--bg);}
+  body{
+    background:var(--bg);
+    color:var(--fg);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
+  .mono{font-family:var(--mono);}
+  .embed header,.embed footer{display:none;}
+
+  /* ---------- header ---------- */
+  header{border-bottom:1px solid var(--fg);padding:18px 0;}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;}
+  header img{height:46px;width:auto;display:block;}
+  header .crumb{font-family:var(--mono);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
+  header .crumb b{color:var(--fg);font-weight:400;}
+
+  /* ---------- hero ---------- */
+  .hero{padding:88px 0 40px;}
+  h1{
+    font-weight:700;
+    font-size:clamp(46px,7.2vw,96px);
+    line-height:.98;
+    letter-spacing:-.025em;
+    text-wrap:balance;
+    max-width:12ch;
+  }
+  .hero .lead{margin-top:26px;font-size:20px;color:var(--mute);max-width:48ch;}
+  .hero .lead b{color:var(--fg);font-weight:500;}
+  .cta-row{margin-top:36px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+  .btn{
+    display:inline-block;
+    font-family:var(--mono);
+    font-size:15px;letter-spacing:.12em;text-transform:uppercase;
+    padding:15px 26px;
+    text-decoration:none;
+    border:1px solid var(--fg);
+    line-height:1;
+  }
+  .btn-primary{background:var(--fg);color:var(--bg);}
+  .btn-primary:hover{background:var(--yellow);border-color:var(--yellow);}
+  .btn-ghost{color:var(--mute);border-color:var(--line);}
+  .tag{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
+
+  /* ---------- scene (icon composition) ---------- */
+  .scene{padding:24px 0 72px;}
+  .scene svg{width:100%;height:auto;display:block;color:var(--fg);}
+  .scene .cap{
+    margin-top:22px;
+    font-family:var(--mono);font-size:17px;letter-spacing:.04em;
+    color:var(--fg);text-align:center;
+  }
+  .scene .cap span{color:var(--mute);}
+  .w1,.w2,.w3{opacity:1;}
+  .face{color:var(--fg);}
+
+  @media (prefers-reduced-motion:no-preference){
+    .sig .w1{animation:wave 5s linear infinite;}
+    .sig .w2{animation:wave 5s linear infinite .16s;}
+    .sig .w3{animation:wave 5s linear infinite .32s;}
+    .sig-2 .w1{animation-delay:1.3s;}
+    .sig-2 .w2{animation-delay:1.46s;}
+    .sig-2 .w3{animation-delay:1.62s;}
+    .nudge{animation:nudge 5s linear infinite;}
+    .buzz{animation:buzz 5s linear infinite;}
+    .face{animation:face 5s linear infinite;}
+    .idle .w1{animation:wave 4s linear infinite;}
+    .idle .w2{animation:wave 4s linear infinite .16s;}
+    .idle .w3{animation:wave 4s linear infinite .32s;}
+  }
+  @keyframes wave{
+    0%,1%{color:#FFF;}
+    5%{color:var(--cyan);}
+    18%{color:var(--cyan);}
+    26%,100%{color:#FFF;}
+  }
+  @keyframes nudge{
+    0%,44%{transform:translateX(0);}
+    48%{transform:translateX(10px);}
+    53%,100%{transform:translateX(0);}
+  }
+  @keyframes buzz{
+    0%,55%{transform:translateX(0);}
+    56.5%{transform:translateX(-5px);}
+    58%{transform:translateX(5px);}
+    59.5%{transform:translateX(-5px);}
+    61%{transform:translateX(4px);}
+    62.5%{transform:translateX(-3px);}
+    64%{transform:translateX(2px);}
+    65.5%,100%{transform:translateX(0);}
+  }
+  @keyframes face{
+    0%,55%{color:#FFF;}
+    56%,66%{color:var(--magenta);}
+    72%,100%{color:#FFF;}
+  }
+
+  /* ---------- section chrome ---------- */
+  section.rule{border-top:1px solid var(--fg);padding:64px 0;}
+  h2{font-weight:700;font-size:clamp(30px,3.6vw,44px);letter-spacing:-.02em;line-height:1.05;}
+  .sub{margin-top:12px;color:var(--mute);max-width:60ch;font-size:17px;}
+  .sub b{color:var(--fg);font-weight:500;}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:14px;}
+
+  /* ---------- setups ---------- */
+  .setups{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+  .setup{border:1px solid var(--fg);padding:28px 28px 26px;}
+  .setup svg{width:100%;height:auto;display:block;color:var(--fg);}
+  .setup .cap{margin-top:18px;font-family:var(--mono);font-size:14px;letter-spacing:.02em;text-align:center;}
+  .setup .cap span{color:var(--mute);}
+  .setup .desc{margin-top:16px;color:var(--mute);font-size:16px;border-top:1px solid var(--line);padding-top:16px;}
+  .setup .desc b{color:var(--fg);font-weight:500;}
+  .setup .desc a{color:var(--fg);}
+
+  /* ---------- screenshots ---------- */
+  .shot-grid{margin-top:40px;display:grid;grid-template-columns:repeat(6,1fr);gap:26px;}
+  .shot{margin:0;}
+  .shot img{
+    width:100%;aspect-ratio:416/496;display:block;
+    border-radius:24%;
+    background:#000;
+    box-shadow:0 0 0 2px var(--fg);
+  }
+  .shot figcaption{
+    margin-top:16px;text-align:center;
+    font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--mute);
+  }
+
+  /* ---------- downloads ---------- */
+  .dl{margin-top:36px;border-top:1px solid var(--fg);}
+  .row{
+    display:grid;
+    grid-template-columns:1.7fr 1.1fr .7fr auto;
+    gap:20px;align-items:center;
+    padding:15px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .row.head{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:12px 0;}
+  .row .name{font-weight:500;font-size:18px;}
+  .row .meta{font-family:var(--mono);font-size:15px;color:var(--mute);}
+  .row a{
+    font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--fg);text-decoration:none;
+    border:1px solid var(--fg);padding:9px 16px;line-height:1;
+    white-space:nowrap;
+  }
+  .row a:hover{background:var(--yellow);border-color:var(--yellow);color:var(--bg);}
+  .install{margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+  .install .box{border-left:1px solid var(--fg);padding:4px 0 4px 24px;}
+  .install h3{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:400;}
+  .install ol{margin:14px 0 0 18px;color:var(--mute);font-size:16px;}
+  .install li{margin-top:8px;}
+  .install li b,.install p b{color:var(--fg);font-weight:500;}
+  .install p{margin-top:14px;color:var(--mute);font-size:16px;}
+  .install p a{color:var(--fg);}
+
+  /* ---------- requirements ---------- */
+  .needs{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
+  .need{border-top:1px solid var(--fg);padding-top:22px;}
+  .need svg{height:64px;width:auto;display:block;color:var(--fg);}
+  .need h3{margin-top:18px;font-weight:500;font-size:19px;}
+  .need p{margin-top:6px;color:var(--mute);font-size:15.5px;}
+  .need p a{color:var(--fg);}
+
+  footer{
+    border-top:1px solid var(--fg);
+    padding:26px 0;
+    color:var(--mute);
+    font-family:var(--mono);font-size:13px;letter-spacing:.06em;
+  }
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .setups{grid-template-columns:1fr;}
+    .shot-grid{grid-template-columns:repeat(3,1fr);gap:18px;}
+    .needs{grid-template-columns:1fr;gap:22px;}
+    .install{grid-template-columns:1fr;}
+    .row{grid-template-columns:1fr auto;}
+    .row .meta{display:none;}
+    .row.head{display:none;}
+    .hero{padding-top:64px;}
+    header img{height:38px;}
+    header .crumb{font-size:12px;letter-spacing:.08em;}
+  }
+</style>
+</head>
+<body>
+
+<!-- icon sprite (traced 1:1 from the slide deck PNGs; coordinates are slide pixels) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-flag" viewBox="0 0 194 243"><path d="M12.00 240.74C10.18 240.42 8.21 239.79 7.75 239.38C7.52 239.17 7.22 239.00 7.08 239.00C6.93 239.00 6.25 238.44 5.55 237.75C3.93 236.16 3.43 235.28 2.59 232.62C2.15 231.19 2.12 229.75 2.12 199.50C2.12 169.25 2.15 167.81 2.59 166.38C3.41 163.78 3.92 162.87 5.39 161.39C6.82 159.97 7.65 159.49 10.25 158.60C11.46 158.19 12.61 158.12 19.75 158.05C31.99 157.92 34.22 158.44 38.06 162.38C38.90 163.23 39.71 164.64 40.30 166.29L40.88 167.88L40.88 199.75C40.88 229.57 40.85 231.69 40.44 232.59C40.20 233.13 40.00 233.71 40.00 233.89C40.00 234.49 38.51 236.45 37.18 237.61C35.27 239.28 33.17 240.19 29.88 240.75C28.32 241.02 13.53 241.00 12.00 240.74ZM24.00 223.62C24.00 223.42 24.00 212.56 24.00 199.50C24.00 186.44 24.00 175.58 24.00 175.38C24.00 175.07 23.55 175.00 21.50 175.00C19.45 175.00 19.00 175.07 19.00 175.38C19.00 175.58 19.00 186.44 19.00 199.50C19.00 212.56 19.00 223.42 19.00 223.62C19.00 223.93 19.45 224.00 21.50 224.00C23.55 224.00 24.00 223.93 24.00 223.62ZM15.25 154.74C13.05 154.22 12.33 153.83 10.75 152.25C9.15 150.64 8.77 149.94 8.25 147.62C7.95 146.30 7.95 10.70 8.25 9.38C8.77 7.06 9.15 6.36 10.75 4.75C12.36 3.15 13.06 2.77 15.38 2.25C16.70 1.95 183.30 1.95 184.62 2.25C186.94 2.77 187.64 3.15 189.25 4.75C190.85 6.36 191.23 7.06 191.75 9.38C192.03 10.62 192.04 79.35 191.75 81.25C191.50 83.00 191.04 84.20 190.22 85.28C189.37 86.39 123.39 152.37 122.28 153.22C121.35 153.92 120.18 154.42 118.62 154.76C117.36 155.04 16.44 155.02 15.25 154.74ZM111.42 136.25C111.73 135.36 111.98 134.34 111.99 133.99C111.99 133.64 112.22 132.72 112.50 131.94C112.77 131.15 113.00 130.23 113.00 129.88C113.00 129.54 113.21 128.60 113.47 127.81C113.72 127.02 114.06 125.78 114.22 125.06C114.37 124.34 114.63 123.16 114.78 122.44C114.94 121.72 115.28 120.48 115.53 119.69C115.79 118.90 116.00 117.99 116.00 117.67C116.00 117.36 116.21 116.43 116.47 115.61C116.73 114.79 117.06 113.56 117.20 112.88C117.35 112.19 117.71 110.67 118.00 109.50C118.29 108.33 118.65 106.81 118.80 106.12C118.94 105.44 119.27 104.21 119.53 103.39C119.79 102.57 120.00 101.64 120.00 101.32C120.00 101.00 120.23 100.10 120.50 99.31C120.78 98.53 121.00 97.65 121.00 97.35C121.00 97.06 121.23 96.11 121.50 95.25C121.78 94.39 122.00 93.39 122.01 93.03C122.01 92.67 122.23 91.92 122.50 91.38C122.77 90.83 122.99 90.18 122.99 89.95C123.00 89.39 126.39 86.00 126.95 85.99C127.18 85.99 127.83 85.77 128.38 85.50C128.93 85.23 129.67 85.01 130.03 85.01C130.39 85.00 131.39 84.78 132.25 84.50C133.11 84.22 134.06 84.00 134.35 84.00C134.65 84.00 135.53 83.78 136.31 83.50C137.10 83.23 138.00 83.00 138.32 83.00C138.64 83.00 139.57 82.79 140.39 82.53C141.21 82.27 142.44 81.94 143.12 81.80C143.81 81.65 145.33 81.29 146.50 81.00C147.67 80.71 149.19 80.35 149.88 80.20C150.56 80.06 151.79 79.73 152.61 79.47C153.43 79.21 154.36 79.00 154.67 79.00C154.99 79.00 155.90 78.79 156.69 78.53C157.48 78.28 158.72 77.94 159.44 77.78C160.16 77.63 161.34 77.37 162.06 77.22C162.78 77.06 164.02 76.72 164.81 76.47C165.60 76.21 166.54 76.00 166.88 76.00C167.23 76.00 168.15 75.78 168.94 75.50C169.72 75.22 170.60 75.00 170.90 75.00C171.53 75.00 174.53 74.07 174.81 73.79C174.95 73.65 175.06 42.70 175.00 19.44C175.00 19.02 171.26 19.00 100.00 19.00C33.50 19.00 25.00 19.04 25.00 19.38C25.00 19.58 25.00 46.19 25.00 78.50C25.00 110.81 25.00 137.42 25.00 137.63C25.00 137.96 29.87 137.99 67.94 137.94L110.88 137.88L111.42 136.25ZM144.70 107.62C156.30 96.01 156.78 95.43 154.19 96.22C153.60 96.39 152.56 96.66 151.88 96.80C151.19 96.95 149.98 97.28 149.19 97.53C148.40 97.79 147.47 98.00 147.12 98.00C146.78 98.00 145.85 98.21 145.06 98.47C144.27 98.72 143.06 99.05 142.38 99.20C139.01 99.93 137.90 100.25 137.57 100.57C137.25 100.90 136.93 102.01 136.20 105.38C136.05 106.06 135.72 107.27 135.47 108.06C135.21 108.85 135.00 109.79 135.00 110.13C135.00 110.48 134.78 111.40 134.50 112.19C134.22 112.97 134.00 113.84 134.00 114.12C134.01 114.40 133.76 115.37 133.47 116.29C132.98 117.78 132.95 118.75 133.40 118.75C133.49 118.75 138.57 113.74 144.70 107.62Z" fill="currentColor"/></symbol>
+    <symbol id="i-wr1" viewBox="0 0 50 89"><path d="M12.64 68.08C11.41 67.42 11.02 66.75 11.01 65.34C11.00 64.20 11.12 63.90 12.12 62.62C13.47 60.88 14.10 59.62 14.61 57.63C15.10 55.78 15.10 55.23 14.62 53.37C14.11 51.40 13.18 49.58 12.06 48.36C11.28 47.51 11.14 47.17 11.05 45.92C10.95 44.59 11.00 44.40 11.65 43.73C14.37 40.89 17.73 43.27 20.60 50.07C21.58 52.38 21.59 58.89 20.62 60.76C20.42 61.15 20.25 61.62 20.25 61.80C20.25 62.37 18.97 64.57 17.72 66.16C15.96 68.38 14.33 69.00 12.64 68.08Z" fill="currentColor"/></symbol>
+    <symbol id="i-wr2" viewBox="0 0 50 89"><path d="M21.85 77.28C20.68 76.56 20.00 75.56 20.00 74.53C20.00 73.49 20.30 72.98 22.40 70.46C28.20 63.49 29.38 53.37 25.36 45.12C24.57 43.50 22.94 41.14 21.40 39.38C19.33 37.01 19.54 35.00 22.01 33.74C22.55 33.47 23.16 33.25 23.38 33.25C24.78 33.25 27.27 35.64 29.59 39.20C34.80 47.20 35.82 57.52 32.30 66.69C30.77 70.66 27.24 75.68 24.94 77.15C23.82 77.87 22.89 77.91 21.85 77.28Z" fill="currentColor"/></symbol>
+    <symbol id="i-wr3" viewBox="0 0 50 89"><path d="M31.35 86.77C30.47 86.39 29.25 84.71 29.25 83.88C29.25 83.12 29.96 81.71 30.72 80.98C33.66 78.10 36.74 73.31 38.36 69.12C40.20 64.34 40.86 60.75 40.86 55.50C40.86 46.55 38.09 38.86 32.40 32.05C29.31 28.37 29.25 28.27 29.25 27.23C29.25 26.42 29.42 26.08 30.24 25.26C31.49 24.01 32.71 23.73 33.95 24.40C35.03 24.98 38.08 28.29 39.70 30.62C45.02 38.34 47.49 46.24 47.49 55.62C47.50 61.58 46.60 66.25 44.33 72.00C42.42 76.86 38.34 82.92 34.94 85.97C33.93 86.87 32.38 87.21 31.35 86.77Z" fill="currentColor"/></symbol>
+    <symbol id="i-wu1" viewBox="0 0 67 41"><path d="M22.35 38.25C21.61 37.96 20.79 36.85 20.61 35.89C20.18 33.60 23.08 30.84 27.91 28.95C29.75 28.23 30.10 28.18 33.38 28.15C36.57 28.13 37.04 28.18 38.75 28.79C41.38 29.72 42.14 30.14 44.06 31.67C46.50 33.62 47.03 34.81 46.25 36.62C45.71 37.88 44.76 38.50 43.37 38.50C42.33 38.50 41.77 38.24 40.38 37.12C38.89 35.92 37.08 35.09 35.21 34.75C32.35 34.24 28.68 35.31 26.62 37.26C25.41 38.41 23.71 38.81 22.35 38.25Z" fill="currentColor"/></symbol>
+    <symbol id="i-wu2" viewBox="0 0 67 41"><path d="M13.66 29.23C12.70 28.96 12.16 28.43 11.62 27.25C11.20 26.31 11.20 26.20 11.61 25.14C11.90 24.36 12.53 23.58 13.66 22.57C15.25 21.16 17.62 19.45 18.62 18.98C18.90 18.86 19.29 18.65 19.50 18.52C20.25 18.06 21.90 17.32 22.88 17.01C23.43 16.83 23.99 16.60 24.12 16.49C24.26 16.38 24.82 16.22 25.38 16.12C25.93 16.03 26.99 15.76 27.75 15.54C28.81 15.22 30.15 15.13 33.62 15.15C37.67 15.16 38.37 15.23 40.50 15.82C45.00 17.05 47.65 18.26 50.77 20.50C56.03 24.27 56.73 25.78 54.60 28.71C54.57 28.76 54.12 28.94 53.61 29.11C52.18 29.61 50.92 29.20 49.31 27.73C48.11 26.64 47.32 26.05 45.37 24.81C43.63 23.70 39.80 22.36 37.38 22.01C33.77 21.49 29.18 21.81 26.41 22.78C23.64 23.74 20.24 25.56 18.98 26.75C18.03 27.65 16.65 28.79 16.28 28.98C15.58 29.33 14.40 29.44 13.66 29.23Z" fill="currentColor"/></symbol>
+    <symbol id="i-wu3" viewBox="0 0 67 41"><path d="M3.46 19.52C2.43 18.71 1.90 17.47 2.11 16.35C2.26 15.57 2.70 14.98 4.34 13.37C5.46 12.27 6.99 10.95 7.75 10.44C8.51 9.93 9.58 9.20 10.14 8.82C11.80 7.69 12.01 7.57 14.66 6.26C16.06 5.57 17.33 5.00 17.50 5.00C17.66 5.00 18.10 4.84 18.46 4.64C19.69 3.98 24.20 2.80 27.62 2.24C29.38 1.95 37.85 1.95 39.50 2.24C41.78 2.64 45.32 3.43 46.25 3.76C50.57 5.25 51.80 5.78 54.38 7.23C59.70 10.22 64.55 14.32 64.89 16.12C65.12 17.35 64.84 18.24 63.93 19.19C63.25 19.90 62.99 20.00 61.83 20.00C60.58 20.00 60.43 19.93 58.70 18.43C54.55 14.84 51.35 12.76 48.00 11.45C46.97 11.05 45.90 10.62 45.62 10.49C45.35 10.36 44.58 10.14 43.91 10.00C43.24 9.85 42.50 9.64 42.28 9.52C41.70 9.21 35.59 8.50 33.57 8.50C31.27 8.51 25.88 9.17 24.50 9.61C23.88 9.80 22.98 10.08 22.50 10.21C17.95 11.52 12.83 14.51 8.33 18.51C6.73 19.92 6.58 20.00 5.36 20.00C4.47 20.00 3.88 19.85 3.46 19.52Z" fill="currentColor"/></symbol>
+    <symbol id="i-wl1" viewBox="0 0 40 67"><path d="M33.64 46.10C31.78 45.06 30.22 42.75 28.49 38.50C28.01 37.32 27.94 36.66 27.93 33.63C27.92 30.48 27.98 29.94 28.57 28.24C29.83 24.63 32.11 21.46 34.02 20.67C35.14 20.20 35.15 20.20 36.33 20.76C37.82 21.46 38.35 22.38 38.19 24.02C38.10 24.94 37.85 25.49 37.09 26.42C35.59 28.25 35.26 28.87 34.74 30.83C34.14 33.09 34.14 33.85 34.72 35.94C35.27 37.90 36.24 39.70 37.29 40.75C37.88 41.34 38.06 41.78 38.15 42.81C38.23 43.63 38.15 44.35 37.95 44.73C37.16 46.19 35.03 46.87 33.64 46.10Z" fill="currentColor"/></symbol>
+    <symbol id="i-wl2" viewBox="0 0 40 67"><path d="M24.45 55.24C23.61 54.80 20.00 50.84 20.00 50.36C20.00 50.25 19.84 49.99 19.65 49.77C19.19 49.24 17.00 45.06 16.99 44.68C16.99 44.51 16.77 43.92 16.50 43.38C16.23 42.83 16.01 42.15 16.01 41.88C16.00 41.60 15.76 40.64 15.48 39.75C15.04 38.35 14.97 37.48 14.98 33.50C14.99 30.96 15.12 28.43 15.27 27.88C15.42 27.32 15.69 26.25 15.86 25.49C16.04 24.73 16.36 23.75 16.59 23.32C16.82 22.88 17.00 22.42 17.00 22.30C17.00 22.05 18.33 19.21 18.83 18.38C19.79 16.78 21.33 14.71 22.77 13.06C24.32 11.30 26.02 10.82 27.51 11.72C28.68 12.43 29.10 13.18 29.08 14.55C29.06 15.85 28.83 16.28 27.26 18.00C26.70 18.62 25.94 19.57 25.58 20.12C25.22 20.68 24.71 21.43 24.46 21.80C24.21 22.17 24.00 22.62 24.00 22.80C24.00 22.98 23.77 23.46 23.50 23.88C23.23 24.29 23.00 24.83 23.00 25.07C23.00 25.32 22.82 25.88 22.60 26.31C22.37 26.74 22.00 28.54 21.76 30.31C21.35 33.38 21.35 33.67 21.78 36.72C22.03 38.48 22.41 40.24 22.62 40.64C22.83 41.05 23.00 41.55 23.00 41.77C23.00 42.13 24.05 44.35 24.82 45.62C25.36 46.51 27.48 49.19 28.35 50.08C28.61 50.35 28.91 50.97 29.02 51.46C29.41 53.21 28.76 54.58 27.16 55.38C26.19 55.86 25.57 55.83 24.45 55.24Z" fill="currentColor"/></symbol>
+    <symbol id="i-wl3" viewBox="0 0 40 67"><path d="M14.85 64.28C13.71 63.44 12.50 62.17 10.98 60.21C6.58 54.55 4.34 49.70 2.46 41.75C1.96 39.64 1.90 38.71 1.89 33.50C1.89 28.30 1.95 27.34 2.45 25.12C3.13 22.08 3.91 19.47 4.53 18.10C4.79 17.53 5.00 16.97 5.00 16.85C4.99 16.66 6.59 13.45 7.75 11.32C9.06 8.92 11.39 5.91 13.93 3.34C15.67 1.59 17.57 1.56 19.11 3.27C20.39 4.68 20.30 6.09 18.84 7.62C18.11 8.39 15.13 12.07 14.56 12.91C13.41 14.60 11.01 19.10 10.99 19.60C10.99 19.75 10.77 20.32 10.50 20.88C10.23 21.43 10.01 22.10 10.00 22.38C9.99 22.65 9.81 23.32 9.60 23.88C9.09 25.26 8.25 31.21 8.25 33.49C8.25 35.82 9.12 41.88 9.63 43.09C9.83 43.58 10.00 44.21 10.00 44.49C10.00 44.77 10.22 45.42 10.50 45.93C10.78 46.45 11.00 47.01 11.00 47.18C11.00 47.58 12.90 51.42 13.82 52.86C13.99 53.13 14.55 53.90 15.06 54.57C15.58 55.25 16.00 55.87 16.00 55.96C16.00 56.05 16.46 56.62 17.02 57.22C19.20 59.57 20.00 60.76 20.00 61.67C20.00 62.71 19.31 63.77 18.15 64.48C17.00 65.20 16.01 65.14 14.85 64.28Z" fill="currentColor"/></symbol>
+    <symbol id="i-relay" viewBox="0 0 62 114"><path d="M11.50 112.00C7.68 111.57 4.33 108.93 2.59 105.00L1.88 103.38L1.88 57.00L1.88 10.62L2.59 9.00C3.91 6.01 6.01 3.91 9.00 2.59L10.62 1.88L30.88 1.88L51.12 1.88L52.18 2.44C52.76 2.75 53.34 3.00 53.48 3.00C54.25 3.00 58.00 6.44 58.00 7.15C58.00 7.30 58.23 7.63 58.50 7.87C58.77 8.12 59.00 8.48 59.00 8.66C59.00 8.84 59.25 9.47 59.56 10.05L60.12 11.12L60.12 57.12L60.12 103.12L59.56 104.30C59.25 104.94 59.00 105.53 59.00 105.60C59.00 105.67 58.65 106.24 58.23 106.86C57.29 108.25 55.19 110.00 53.57 110.74C52.91 111.04 52.17 111.40 51.91 111.54C51.66 111.67 50.48 111.89 49.29 112.01C46.76 112.28 13.89 112.26 11.50 112.00ZM49.56 104.34C50.89 103.82 51.66 103.14 52.27 101.95C52.74 101.05 52.75 99.78 52.75 56.99C52.75 15.64 52.72 12.90 52.32 12.16C51.65 10.95 50.96 10.25 49.95 9.73C49.06 9.27 48.23 9.25 30.82 9.26L12.62 9.27L11.50 9.82C10.65 10.24 10.24 10.65 9.82 11.50L9.27 12.62L9.27 57.00L9.27 101.38L9.82 102.50C10.24 103.35 10.65 103.76 11.50 104.18L12.62 104.73L30.56 104.74C46.65 104.75 48.60 104.71 49.56 104.34ZM28.36 27.40C26.37 26.30 25.25 24.57 25.25 22.59C25.25 20.53 26.40 18.76 28.39 17.74C29.69 17.08 31.06 17.12 32.65 17.87C35.48 19.21 36.66 21.96 35.47 24.41C33.97 27.49 30.88 28.79 28.36 27.40Z" fill="currentColor"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 51 27"><path d="M32.13 24.50C32.04 24.37 31.99 22.82 32.00 21.07C32.01 19.31 32.02 17.68 32.01 17.44C32.00 17.03 31.07 17.00 17.06 16.94L2.12 16.88L2.05 13.79C2.01 11.72 2.08 10.58 2.27 10.35C2.51 10.06 5.02 10.00 17.28 10.00C31.13 10.00 32.00 9.97 32.01 9.56C32.02 9.32 32.04 7.61 32.07 5.75C32.12 2.54 32.15 2.37 32.65 2.30C32.95 2.26 33.70 2.63 34.44 3.18C35.14 3.70 35.92 4.26 36.17 4.43C36.42 4.60 37.19 5.13 37.88 5.61C38.56 6.10 39.74 6.91 40.50 7.42C41.26 7.94 41.96 8.50 42.07 8.68C42.18 8.86 42.42 9.00 42.60 9.00C42.78 9.00 43.13 9.23 43.38 9.50C43.62 9.78 43.93 10.00 44.07 10.00C44.20 10.00 44.61 10.25 44.99 10.56C45.72 11.16 46.00 11.35 47.69 12.43C48.27 12.81 48.75 13.29 48.75 13.50C48.75 13.71 48.27 14.19 47.69 14.57C46.08 15.60 45.74 15.83 45.03 16.38C44.67 16.66 43.87 17.22 43.25 17.63C42.63 18.04 42.04 18.51 41.93 18.69C41.82 18.86 41.58 19.00 41.40 19.00C41.22 19.00 40.87 19.23 40.62 19.50C40.38 19.77 40.06 20.00 39.93 20.00C39.80 20.00 39.17 20.42 38.53 20.94C37.07 22.12 35.82 23.00 35.60 23.00C35.51 23.00 35.18 23.25 34.86 23.56C34.55 23.87 34.12 24.27 33.91 24.44C33.45 24.81 32.34 24.85 32.13 24.50Z" fill="currentColor"/></symbol>
+    <symbol id="i-arrow-l" viewBox="0 0 80 28"><path d="M60.17 25.58C60.08 25.49 60.00 23.52 60.00 21.21L60.00 17.00L31.28 17.00C7.10 17.00 2.52 16.95 2.27 16.65C2.08 16.42 2.01 15.15 2.06 12.72L2.12 9.12L31.00 9.00L59.88 8.88L59.94 4.44L60.01 0.00L60.91 -0.00C61.52 -0.00 62.01 0.19 62.39 0.56C62.70 0.87 63.87 1.80 64.99 2.62C66.11 3.45 67.89 4.80 68.95 5.63C70.01 6.45 71.33 7.43 71.88 7.81C72.42 8.18 73.21 8.80 73.61 9.18C74.02 9.56 75.02 10.32 75.84 10.87C78.04 12.35 78.07 12.49 76.61 13.85C75.93 14.48 75.29 15.00 75.18 15.00C75.07 15.00 74.08 15.70 72.99 16.56C71.90 17.42 70.08 18.82 68.94 19.68C67.80 20.53 66.16 21.77 65.29 22.43C60.85 25.79 60.55 25.97 60.17 25.58Z" fill="currentColor"/></symbol>
+    <symbol id="i-receiver" viewBox="0 0 110 106"><path d="M22.50 103.37C21.61 103.18 20.54 103.02 20.12 103.01C19.71 102.99 18.93 102.77 18.38 102.50C17.82 102.23 17.25 102.01 17.10 102.01C16.80 102.00 14.23 100.70 13.22 100.05C11.49 98.92 10.99 98.51 9.24 96.76C7.49 95.01 7.08 94.51 5.95 92.78C5.30 91.77 4.00 89.20 3.99 88.90C3.99 88.75 3.77 88.17 3.50 87.62C3.23 87.08 3.01 86.34 3.01 86.00C3.00 85.66 2.83 84.49 2.62 83.42C2.06 80.48 2.06 25.52 2.62 22.58C2.83 21.51 3.00 20.34 3.01 20.00C3.01 19.66 3.23 18.93 3.50 18.38C3.77 17.82 3.99 17.25 3.99 17.10C4.00 16.80 5.30 14.23 5.95 13.22C7.08 11.49 7.49 10.99 9.24 9.24C10.99 7.49 11.49 7.08 13.22 5.95C14.23 5.30 16.80 4.00 17.10 3.99C17.25 3.99 17.82 3.77 18.38 3.50C18.93 3.23 19.65 3.01 19.98 3.01C20.31 3.00 21.50 2.83 22.62 2.62C24.39 2.29 28.29 2.25 52.14 2.33C81.09 2.43 83.37 2.51 85.38 3.59C85.79 3.82 86.26 4.00 86.43 4.00C86.74 4.00 88.98 5.15 90.21 5.95C92.10 7.16 94.96 10.09 96.35 12.25C96.75 12.87 97.29 13.68 97.54 14.05C97.79 14.42 98.00 14.87 98.00 15.05C98.00 15.23 98.23 15.71 98.50 16.12C98.77 16.54 99.00 17.04 99.00 17.25C99.00 17.46 99.17 17.94 99.36 18.32C99.56 18.69 99.95 20.34 100.24 21.98C100.73 24.86 100.75 25.84 100.75 53.21C100.75 77.28 100.69 81.75 100.38 83.42C100.17 84.49 100.00 85.66 99.99 86.00C99.99 86.34 99.77 87.08 99.50 87.62C99.23 88.17 99.01 88.75 99.01 88.90C99.00 89.20 97.70 91.77 97.05 92.78C95.92 94.51 95.51 95.01 93.76 96.76C92.01 98.51 91.51 98.92 89.78 100.05C88.77 100.70 86.20 102.00 85.90 102.01C85.75 102.01 85.17 102.23 84.62 102.50C84.08 102.77 83.34 102.99 83.00 102.99C82.66 103.00 81.49 103.17 80.42 103.38C77.67 103.90 25.05 103.89 22.50 103.37ZM82.25 94.54C83.87 93.85 84.37 93.61 85.38 93.07C86.33 92.55 90.00 88.85 90.00 88.40C90.00 88.21 90.15 87.93 90.34 87.78C90.53 87.62 91.01 86.62 91.41 85.56L92.12 83.62L92.12 53.00L92.12 22.38L91.45 20.75C90.07 17.44 88.36 14.97 86.49 13.61C85.94 13.21 85.25 12.68 84.95 12.44C84.66 12.20 84.32 12.00 84.20 12.00C84.07 12.00 83.44 11.75 82.80 11.44L81.62 10.88L51.88 10.88L22.12 10.88L20.75 11.46C19.13 12.15 18.63 12.39 17.62 12.93C16.67 13.45 13.00 17.15 13.00 17.60C13.00 17.79 12.85 18.07 12.66 18.22C12.47 18.38 11.99 19.38 11.59 20.44L10.88 22.38L10.88 53.00L10.88 83.62L11.59 85.56C11.99 86.62 12.47 87.62 12.66 87.78C12.85 87.93 13.00 88.21 13.00 88.40C13.00 88.85 16.67 92.55 17.62 93.07C19.78 94.23 21.28 94.80 22.75 95.01C23.51 95.11 36.89 95.18 52.50 95.16L80.88 95.12L82.25 94.54ZM48.69 74.26C46.78 73.89 45.61 73.48 44.25 72.72C44.04 72.60 43.46 72.28 42.94 72.00C41.74 71.35 38.65 68.26 38.00 67.06C37.72 66.54 37.39 65.96 37.26 65.75C36.62 64.75 36.03 62.90 35.65 60.75C35.26 58.48 35.26 58.27 35.73 55.88C36.17 53.62 36.59 52.34 37.26 51.25C37.39 51.04 37.72 50.46 38.00 49.94C38.65 48.74 41.74 45.65 42.94 45.00C43.46 44.72 44.04 44.40 44.25 44.28C45.54 43.53 47.19 43.00 49.38 42.64C51.78 42.24 51.96 42.24 54.00 42.71C55.17 42.98 56.63 43.49 57.25 43.84C57.87 44.19 58.70 44.67 59.09 44.89C59.49 45.11 60.21 45.65 60.71 46.09C64.68 49.60 66.54 52.46 67.37 56.32C67.77 58.14 67.77 58.41 67.37 60.69C66.98 62.90 66.38 64.75 65.74 65.75C65.61 65.96 65.28 66.54 65.00 67.06C64.35 68.26 61.26 71.35 60.06 72.00C59.54 72.28 58.96 72.60 58.75 72.71C57.20 73.56 56.32 73.86 54.13 74.27C51.25 74.82 51.53 74.82 48.69 74.26ZM54.80 65.50C55.17 65.22 55.56 65.00 55.65 65.00C55.74 65.00 56.31 64.51 56.91 63.91C57.51 63.31 58.00 62.74 58.00 62.65C58.00 62.56 58.24 62.15 58.54 61.74C58.99 61.13 59.09 60.65 59.11 58.94C59.12 56.96 59.09 56.81 58.21 55.50C57.18 53.96 55.91 52.70 54.27 51.61C53.26 50.94 52.99 50.88 51.08 50.89C49.35 50.91 48.87 51.00 48.26 51.46C47.85 51.76 47.44 52.00 47.35 52.00C47.13 52.00 45.00 54.13 45.00 54.35C45.00 54.44 44.75 54.86 44.44 55.28C43.95 55.94 43.88 56.34 43.88 58.50C43.88 60.66 43.95 61.06 44.44 61.72C44.75 62.14 45.00 62.56 45.00 62.65C45.00 62.89 47.14 65.00 47.38 65.00C47.50 65.00 47.79 65.19 48.04 65.41C49.10 66.37 53.54 66.43 54.80 65.50ZM104.67 61.30C103.78 60.37 103.82 59.83 104.97 57.55C106.64 54.21 106.85 53.30 106.95 48.99C107.03 45.48 106.98 44.87 106.39 42.45C106.03 40.99 105.34 39.04 104.87 38.13C104.39 37.21 104.00 36.42 104.00 36.37C104.00 36.15 105.29 35.00 105.53 35.00C105.76 35.00 106.72 35.92 107.39 36.78C107.79 37.31 108.69 39.02 109.10 40.06C109.31 40.58 109.59 41.00 109.74 41.00C109.91 41.00 110.00 43.37 110.00 48.32C110.00 55.33 109.98 55.66 109.50 56.07C109.22 56.30 109.00 56.67 109.00 56.88C109.00 57.62 107.25 60.56 106.29 61.44C105.51 62.15 105.48 62.14 104.67 61.30ZM50.29 39.59C49.34 39.11 48.36 37.93 48.12 36.96C47.75 35.45 49.57 33.33 51.45 33.07C52.68 32.91 53.34 33.26 54.12 34.49C55.00 35.89 55.11 36.57 54.61 37.62C53.74 39.46 51.79 40.35 50.29 39.59Z" fill="currentColor"/></symbol>
+    <symbol id="i-rwaves-l" viewBox="0 0 17 35"><path d="M6.09 31.82C5.49 31.17 5.00 30.51 5.00 30.35C5.00 30.19 4.85 29.93 4.66 29.78C4.23 29.42 3.14 25.95 2.66 23.38C1.87 19.16 1.93 14.79 2.84 10.41C3.43 7.57 4.85 4.50 6.26 3.02C6.79 2.46 7.31 2.00 7.41 2.00C7.86 2.00 9.00 3.40 9.00 3.94C9.00 4.27 8.59 5.23 8.09 6.08C7.59 6.93 7.02 8.24 6.83 9.00C6.64 9.76 6.37 10.77 6.24 11.25C6.12 11.73 6.01 14.06 6.01 16.43C6.00 20.22 6.07 21.03 6.62 23.12C6.96 24.43 7.41 25.83 7.62 26.23C7.83 26.64 8.00 27.09 8.00 27.22C8.00 27.35 8.46 28.13 9.03 28.95C9.88 30.18 10.01 30.52 9.79 30.93C9.45 31.56 7.82 33.00 7.45 33.00C7.30 33.00 6.68 32.47 6.09 31.82ZM12.39 31.12C11.59 30.30 10.00 27.50 10.00 26.90C10.00 26.75 9.83 26.30 9.62 25.91C9.42 25.52 9.14 24.48 9.00 23.60C8.86 22.73 8.62 21.70 8.47 21.32C8.03 20.22 8.12 14.58 8.60 13.28C8.82 12.68 9.00 11.92 9.00 11.60C9.00 10.94 10.72 7.19 11.64 5.82C12.23 4.96 13.19 4.00 13.46 4.00C13.86 4.00 15.00 5.43 15.00 5.93C15.00 6.26 14.57 7.39 14.03 8.45C12.36 11.79 12.15 12.70 12.05 17.01C11.97 20.52 12.02 21.13 12.61 23.55C12.97 25.01 13.66 26.96 14.13 27.87C14.61 28.79 15.00 29.79 15.00 30.10C15.00 30.61 13.84 32.00 13.42 32.00C13.32 32.00 12.86 31.60 12.39 31.12Z" fill="currentColor"/></symbol>
+    <symbol id="i-rwaves-r" viewBox="0 0 11 35"><path d="M1.63 32.20C0.84 31.27 0.89 30.69 1.87 29.00C2.23 28.38 2.61 27.71 2.72 27.50C3.72 25.60 4.00 24.98 4.00 24.67C4.00 24.48 4.22 23.61 4.50 22.75C5.26 20.36 5.21 15.08 4.40 11.93C3.61 8.92 3.21 7.95 1.93 6.03C0.87 4.43 0.81 3.72 1.68 2.75C2.31 2.04 2.48 1.97 2.94 2.22C3.68 2.61 5.52 5.09 6.30 6.75C8.37 11.10 9.41 16.63 8.80 20.00C8.04 24.19 7.71 25.31 6.41 27.99C5.35 30.20 3.19 33.00 2.56 33.00C2.41 33.00 1.99 32.64 1.63 32.20Z" fill="currentColor"/></symbol>
+    <symbol id="i-strap-top" viewBox="0 0 40 93"><path d="M0.00 92.76C0.00 92.63 0.20 92.41 0.44 92.28C0.85 92.05 0.88 89.58 1.00 47.58L1.12 3.12L1.70 2.20C2.13 1.50 2.61 1.15 3.65 0.76C4.97 0.27 5.50 0.25 19.96 0.25C33.14 0.25 35.06 0.30 36.14 0.66C36.82 0.88 37.59 1.25 37.85 1.47C39.05 2.50 39.00 0.61 39.00 47.61C39.00 91.48 39.00 91.75 39.50 92.06C40.98 92.98 40.65 93.00 20.00 93.00C7.53 93.00 0.00 92.91 0.00 92.76ZM31.00 91.00C31.50 90.50 31.50 90.17 31.50 49.81C31.50 13.38 31.46 9.05 31.11 8.56L30.72 8.00L20.04 8.00C12.06 8.00 9.27 8.08 9.05 8.30C8.82 8.53 8.75 18.06 8.75 49.66C8.75 86.65 8.79 90.75 9.14 91.11C9.49 91.45 10.82 91.50 20.02 91.50C30.17 91.50 30.52 91.48 31.00 91.00Z" fill="currentColor"/></symbol>
+    <symbol id="i-face" viewBox="0 0 66 68"><path d="M11.39 67.77C11.31 67.64 10.49 67.12 9.56 66.61C7.10 65.25 3.68 61.70 2.33 59.12C1.76 58.02 1.15 56.56 0.99 55.88C0.82 55.19 0.53 54.38 0.34 54.07C-0.17 53.25 -0.17 14.75 0.34 13.93C0.53 13.62 0.82 12.81 0.99 12.12C1.78 8.82 5.45 3.94 8.62 2.00C9.40 1.52 10.43 0.87 10.91 0.56L11.77 -0.00L33.15 -0.00C53.50 -0.00 54.55 0.02 55.20 0.46C55.57 0.71 56.55 1.35 57.38 1.88C60.36 3.78 63.30 7.44 64.59 10.88C64.96 11.84 65.42 12.94 65.63 13.33C66.17 14.36 66.19 54.28 65.65 54.73C65.46 54.89 65.17 55.55 65.01 56.20C64.01 60.15 60.07 64.81 55.94 66.91C55.28 67.24 54.75 67.62 54.75 67.75C54.75 68.08 11.59 68.09 11.39 67.77ZM48.49 61.51C51.81 61.03 55.07 58.78 56.84 55.75C58.42 53.05 58.35 53.95 58.44 35.12C58.50 23.28 58.44 17.37 58.25 16.25C57.38 11.17 53.45 7.19 48.62 6.51C46.31 6.18 19.91 6.18 17.62 6.51C13.27 7.14 9.69 10.17 8.27 14.43C7.76 15.95 7.75 16.42 7.75 34.00C7.75 51.58 7.76 52.05 8.27 53.57C9.64 57.66 13.20 60.80 17.25 61.46C19.08 61.77 46.43 61.80 48.49 61.51Z" fill="currentColor"/></symbol>
+    <symbol id="i-strap-bot" viewBox="0 0 40 93"><path d="M3.57 92.22C2.62 91.86 2.12 91.48 1.70 90.80L1.12 89.88L1.00 45.42C0.88 3.42 0.85 0.95 0.44 0.72C0.20 0.59 -0.00 0.37 -0.00 0.24C-0.00 0.09 7.53 0.00 20.00 0.00C40.65 0.00 40.98 0.02 39.50 0.94C39.00 1.25 39.00 1.52 39.00 45.39C39.00 92.39 39.05 90.50 37.85 91.53C37.59 91.75 36.82 92.12 36.14 92.34C35.05 92.70 33.16 92.75 19.89 92.74C5.49 92.72 4.82 92.70 3.57 92.22ZM31.00 84.76C31.33 84.55 31.38 79.64 31.44 43.51C31.50 2.73 31.50 2.50 31.00 2.00C30.52 1.52 30.18 1.50 20.02 1.50C10.82 1.50 9.49 1.55 9.14 1.89C8.79 2.25 8.75 6.35 8.75 43.34C8.75 74.94 8.82 84.47 9.05 84.70C9.42 85.07 30.41 85.13 31.00 84.76Z" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<header>
+  <div class="wrap">
+    <img src="https://static.wixstatic.com/media/870f4b_b311638af3fb46b1987399498b6ea3a2~mv2.png/v1/fill/w_180,h_108,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/White%20on%20Transparent.png" alt="rareBit">
+    <div class="crumb">Smart Watch / <b>Apple Watch</b></div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>rareBit on Apple&nbsp;Watch.</h1>
+    <p class="lead">Every PRO Flag press, <b>on your wrist</b>. Flag alert haptics and a match timer built for officials — countdown, count-up, stoppage log — in the rareBit app for Apple&nbsp;Watch.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://apps.apple.com/us/app/rarebit/id6758751793">Get it on the App Store</a>
+      <span class="tag">Free · one download for iPhone + Apple Watch</span>
+    </div>
+  </div>
+</section>
+
+<section class="scene">
+  <div class="wrap">
+    <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rareBit Flags signal a rareBit Relay, which forwards the alert to an Apple Watch"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="sig"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="sig sig-2"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-relay" x="672" y="226" width="62" height="114"/><g class="nudge"><use href="#i-arrow" x="680" y="341" width="51" height="27"/></g><g class="buzz"><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use class="face" href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></g></svg>
+    <p class="cap">rareBit Flags + rareBit Relay <span>(Smartwatch Alerts)</span></p>
+  </div>
+</section>
+
+<section class="rule" id="setups">
+  <div class="wrap">
+    <div class="eyebrow">Two ways to set up</div>
+    <h2>The watch needs a relay. You've got two.</h2>
+    <p class="sub">An Apple Watch can't hear PRO Flags directly. Something in your pocket has to listen for the Flags and hand each press to the watch over Bluetooth&nbsp;LE.</p>
+
+    <div class="setups">
+      <div class="setup">
+        <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rareBit Flags plus rareBit Relay"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="idle"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="idle"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-relay" x="672" y="226" width="62" height="114"/><use href="#i-arrow" x="680" y="341" width="51" height="27"/><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
+        <p class="cap">rareBit Flags + rareBit Relay <span>(Smartwatch Alerts)</span></p>
+        <p class="desc"><b>The dedicated relay.</b> Small, pocketable, charges over USB-C. Hears every linked Flag and pushes each press straight to the watch — your phone can stay in the bag. <a href="https://www.rarebitofficial.com/shop">Shop</a></p>
+      </div>
+
+      <div class="setup">
+        <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rareBit Flags plus a PRO Receiver running RXRLY"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="idle"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="idle"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-receiver" x="653" y="226" width="97" height="100"/><use href="#i-arrow-l" x="669" y="328" width="80" height="28"/><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
+        <p class="cap">rareBit Flags + RXRLY <span>(Smartwatch Alerts)</span></p>
+        <p class="desc"><b>Reuse your PRO Receiver.</b> Flash the free RXRLY firmware and the Receiver you already own becomes the relay. <a href="https://www.rarebitofficial.com/services-4">RXRLY firmware</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="rule">
+  <div class="wrap">
+    <div class="eyebrow">On the wrist</div>
+    <h2>Big digits. Clear haptics. One buzz per flag.</h2>
+    <p class="sub">Countdown front and centre with the count-up overlay, an opt-in stoppage log, and an end-of-period alarm that keeps buzzing until you tap. Captured on a 46&nbsp;mm Series&nbsp;10.</p>
+    <div class="shot-grid">
+      <figure class="shot">
+        <img src="screenshots/01-home-searching.png" alt="Home screen: searching for a rareBit Relay" loading="lazy">
+        <figcaption>Finding relay</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/04-timer-running.png" alt="Match timer running with the count-up overlay" loading="lazy">
+        <figcaption>Match running</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/02-playback-haptic.png" alt="Alert haptic preset playback" loading="lazy">
+        <figcaption>Alert haptics</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/08-timer-stoppage-running.png" alt="Timer with an open stoppage segment" loading="lazy">
+        <figcaption>Stoppage</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/05-timer-paused.png" alt="Match timer paused" loading="lazy">
+        <figcaption>Paused</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screenshots/06-edit-mode.png" alt="Edit screen: duration, period, count-up toggle" loading="lazy">
+        <figcaption>Settings</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<section class="rule" id="downloads">
+  <div class="wrap">
+    <div class="eyebrow">Get the app</div>
+    <h2>Free on the App Store.</h2>
+    <p class="sub">One download covers both. Install <b>rareBit</b> on your iPhone and the Apple&nbsp;Watch app comes with it.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://apps.apple.com/us/app/rarebit/id6758751793">Open in the App Store</a>
+      <span class="tag">iOS 26 · watchOS 26 or later</span>
+    </div>
+
+    <div class="install">
+      <div class="box">
+        <h3>Installing</h3>
+        <ol>
+          <li>Install <b>rareBit</b> from the App Store on your iPhone.</li>
+          <li>The watch app installs on its own when <b>Automatic App Install</b> is on. Otherwise: Watch app on the iPhone → <b>Available Apps</b> → rareBit → Install.</li>
+          <li>Open rareBit on the watch. It finds your Relay on its own — no pairing screen.</li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>Using it</h3>
+        <ol>
+          <li><b>Tap</b> starts and pauses the match; turn the <b>crown</b> on the edit screen to set the period length.</li>
+          <li><b>Stoppage</b> on: a tap on a running clock opens a stoppage, the next tap closes it. A triple tap every 20 s reminds you one is open.</li>
+          <li>At the end of the period the watch keeps buzzing until you tap the screen.</li>
+        </ol>
+        <p>Long press on a Flag = that Flag's haptic. Short press = one shared tap (needs a Relay with short-press support). Questions? <a href="mailto:reply@rarebit.biz">reply@rarebit.biz</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="rule">
+  <div class="wrap">
+    <div class="eyebrow">What you need</div>
+    <div class="needs">
+      <div class="need">
+        <svg viewBox="56 127 194 243" aria-hidden="true"><use href="#i-flag" x="56" y="127" width="194" height="243"/></svg>
+        <h3>A rareBit PRO Set</h3>
+        <p>Two Flags, linked and ready to officiate. <a href="https://www.rarebitofficial.com/shop">Shop</a></p>
+      </div>
+      <div class="need">
+        <svg viewBox="672 226 62 142" aria-hidden="true"><use href="#i-relay" x="672" y="226" width="62" height="114"/><use href="#i-arrow" x="680" y="341" width="51" height="27"/></svg>
+        <h3>A rareBit Relay</h3>
+        <p>Or a PRO Receiver flashed with the free <a href="https://www.rarebitofficial.com/services-4">RXRLY firmware</a>.</p>
+      </div>
+      <div class="need">
+        <svg viewBox="775 143 66 254" aria-hidden="true"><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
+        <h3>An Apple Watch</h3>
+        <p>watchOS 26 or later, paired with an iPhone on iOS 26 running the rareBit app.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>rareBitOfficial.com — Smart Referee Paging Devices</span>
+    <span>reply@rarebit.biz</span>
+  </div>
+</footer>
+
+</body>
+</html>
