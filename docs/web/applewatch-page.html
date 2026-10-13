@@ -7,90 +7,69 @@
 <script>(function(){if(new URLSearchParams(location.search).has('embed')){document.documentElement.classList.add('embed');}addEventListener('DOMContentLoaded',function(){document.querySelectorAll('a[href^="http"]').forEach(function(a){if(a.target)return;a.target=/rarebitofficial\.com/.test(a.href)?'_top':'_blank';if(a.target==='_blank'){a.rel='noopener';}});});})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Courier+Prime:wght@400;700&family=Archivo:ital,wdth,wght@1,62..125,700..900&display=swap" rel="stylesheet">
 <!--
   rareBit page template (Apple Watch) — black / white with yellow + cyan accents.
   The icon sprite is traced 1:1 from the slide-deck PNGs (960x540); every <use> below sits at its
   slide-pixel position, so a scene viewBox of "0 118 960 290" reproduces a slide verbatim.
   All four sets, ready to paste, live in rareBit-Garmin/docs/web/rarebit-icons.html:
     Flags + Receiver (vibration alerts), Flags + Relay, Flags + RXRLY, Flags + Bangle.js 2.
-  Palette: black / white page; accents are pure yellow (#FFFF00, primary) and cyan (#00FFFF, secondary)
-  as solid pill fills with black type. Cyan = signal pulse, yellow = watch buzz. Two accents only; no outlined pills.
-  Type: Archivo condensed black caps for display (Nike-style), Helvetica for body.
+  Palette: black / white page; pills are solid cyan / magenta / yellow with black type.
+  Type: Space Grotesk headings + body, Courier Prime labels; pills only in Archivo condensed black italic.
 -->
 <style>
   :root{
     --bg:#000;
     --fg:#FFF;
-    --ink:#000;
     --mute:#9A9A9A;
     --line:rgba(255,255,255,.22);
     --cyan:#00FFFF;
+    --magenta:#FF00FF;
     --yellow:#FFFF00;
-    --body:'Helvetica Neue',Helvetica,Arial,sans-serif;
-    --nike:'Archivo','Arial Narrow',sans-serif;
+    --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
+    --mono:'Courier Prime',ui-monospace,Menlo,Consolas,monospace;
+    --sport:'Barlow Condensed','Arial Narrow',sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;background:var(--bg);}
   body{
     background:var(--bg);
     color:var(--fg);
-    font-family:var(--body);
+    font-family:var(--sans);
     font-size:17px;
-    line-height:1.5;
+    line-height:1.55;
     -webkit-font-smoothing:antialiased;
   }
   a{color:inherit;}
   .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
+  .mono{font-family:var(--mono);}
   .embed header,.embed footer{display:none;}
-
-  /* type: Nike-style condensed black caps for display, Helvetica for reading */
-  .label{font-family:var(--nike);font-stretch:75%;font-weight:700;text-transform:uppercase;letter-spacing:.12em;}
 
   /* ---------- header ---------- */
   header{border-bottom:1px solid var(--fg);padding:18px 0;}
   header .wrap{display:flex;align-items:center;justify-content:space-between;}
   header img{height:46px;width:auto;display:block;}
-  header .crumb{font-family:var(--nike);font-stretch:75%;font-weight:700;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
-  header .crumb b{color:var(--fg);font-weight:800;}
+  header .crumb{font-family:var(--mono);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
+  header .crumb b{color:var(--fg);font-weight:400;}
 
   /* ---------- hero ---------- */
-  .hero{padding:84px 0 36px;}
+  .hero{padding:88px 0 40px;}
   h1{
-    font-family:var(--nike);font-stretch:62%;font-weight:900;
-    text-transform:uppercase;
-    font-size:clamp(60px,10vw,136px);
-    line-height:.84;
-    letter-spacing:-.005em;
-    max-width:10ch;
+    font-weight:700;
+    font-size:clamp(46px,7.2vw,96px);
+    line-height:.98;
+    letter-spacing:-.025em;
+    text-wrap:balance;
+    max-width:12ch;
   }
-  .hero .lead{margin-top:28px;font-size:20px;color:var(--mute);max-width:46ch;}
-  .hero .lead b{color:var(--fg);font-weight:700;}
-  .cta-row{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
-
-  /* ---------- pills: solid CMY fill, black type, no outlines ---------- */
-  .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;}
-  .pill,.btn{
-    display:inline-block;
-    font-family:var(--nike);font-stretch:75%;font-style:italic;font-weight:900;
-    text-transform:uppercase;letter-spacing:.02em;line-height:1;
-    color:var(--ink);text-decoration:none;
-    border:0;border-radius:999px;
-    white-space:nowrap;
-  }
-  .pill{padding:9px 20px 8px;}
-  .pill.c{background:var(--cyan);}
-  .pill.y{background:var(--yellow);}
-  .btn{font-size:24px;padding:16px 34px 15px;background:var(--yellow);}
-  a.btn:hover{background:var(--cyan);}
-  .btn.c{background:var(--cyan);font-size:18px;padding:13px 24px 12px;cursor:default;}
-  .btn.sticker{font-size:16px;padding:11px 20px 10px;cursor:default;}
+  .hero .lead{margin-top:26px;font-size:20px;color:var(--mute);max-width:48ch;}
+  .hero .lead b{color:var(--fg);font-weight:500;}
+  .cta-row{margin-top:36px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
 
   /* ---------- scene (icon composition) ---------- */
   .scene{padding:24px 0 72px;}
   .scene svg{width:100%;height:auto;display:block;color:var(--fg);}
-  .scene .cap{margin-top:28px;}
-  .scene .cap .pill{font-size:24px;padding:12px 26px 11px;}
+  .scene .cap{margin-top:26px;}
   .w1,.w2,.w3{opacity:1;}
   .face{color:var(--fg);}
 
@@ -131,34 +110,28 @@
   }
   @keyframes face{
     0%,55%{color:#FFF;}
-    56%,66%{color:var(--yellow);}
+    56%,66%{color:var(--magenta);}
     72%,100%{color:#FFF;}
   }
 
   /* ---------- section chrome ---------- */
-  section.rule{border-top:1px solid var(--fg);padding:68px 0;}
-  h2{
-    font-family:var(--nike);font-stretch:62%;font-weight:900;
-    text-transform:uppercase;
-    font-size:clamp(40px,5.4vw,72px);
-    line-height:.88;letter-spacing:0;
-  }
-  .sub{margin-top:16px;color:var(--mute);max-width:58ch;font-size:17px;}
-  .sub b{color:var(--fg);font-weight:700;}
-  .eyebrow{font-family:var(--nike);font-stretch:75%;font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:14px;}
+  section.rule{border-top:1px solid var(--fg);padding:64px 0;}
+  h2{font-weight:700;font-size:clamp(30px,3.6vw,44px);letter-spacing:-.02em;line-height:1.05;}
+  .sub{margin-top:12px;color:var(--mute);max-width:60ch;font-size:17px;}
+  .sub b{color:var(--fg);font-weight:500;}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:14px;}
 
   /* ---------- setups ---------- */
-  .setups{margin-top:44px;display:grid;grid-template-columns:1fr 1fr;gap:36px;}
+  .setups{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:28px;}
   .setup{padding:8px 0 0;}
   .setup svg{width:100%;height:auto;display:block;color:var(--fg);}
-  .setup .cap{margin-top:22px;}
-  .setup .cap .pill{font-size:15px;padding:8px 15px 7px;}
-  .setup .desc{margin-top:18px;color:var(--mute);font-size:16px;border-top:1px solid var(--line);padding-top:16px;}
-  .setup .desc b{color:var(--fg);font-weight:700;}
+  .setup .cap{margin-top:20px;}
+  .setup .desc{margin-top:16px;color:var(--mute);font-size:16px;border-top:1px solid var(--line);padding-top:16px;}
+  .setup .desc b{color:var(--fg);font-weight:500;}
   .setup .desc a{color:var(--fg);}
 
   /* ---------- screenshots ---------- */
-  .shot-grid{margin-top:44px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:26px;}
+  .shot-grid{margin-top:40px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:26px;}
   .shot{margin:0;}
   .shot img{
     width:100%;aspect-ratio:416/496;display:block;
@@ -167,7 +140,6 @@
     box-shadow:0 0 0 2px var(--fg);
   }
   .shot figcaption{margin-top:16px;text-align:center;}
-  .shot figcaption .pill{font-size:16px;padding:7px 14px 6px;}
 
   /* ---------- downloads ---------- */
   .dl{margin-top:36px;border-top:1px solid var(--fg);}
@@ -175,26 +147,18 @@
     display:grid;
     grid-template-columns:1.7fr 1.1fr .7fr auto;
     gap:20px;align-items:center;
-    padding:14px 0;
+    padding:15px 0;
     border-bottom:1px solid var(--line);
   }
-  .row.head{font-family:var(--nike);font-stretch:75%;font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:12px 0;}
-  .row .name{font-weight:700;font-size:18px;}
-  .row .meta{font-size:15px;color:var(--mute);}
-  .row a{
-    font-family:var(--nike);font-stretch:75%;font-style:italic;font-weight:900;
-    font-size:17px;letter-spacing:.02em;text-transform:uppercase;line-height:1;
-    color:var(--ink);background:var(--yellow);text-decoration:none;
-    border:0;border-radius:999px;padding:9px 22px 8px;
-    white-space:nowrap;
-  }
-  .row a:hover{background:var(--cyan);}
-  .install{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+  .row.head{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);padding:12px 0;}
+  .row .name{font-weight:500;font-size:18px;}
+  .row .meta{font-family:var(--mono);font-size:15px;color:var(--mute);}
+  .install{margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:28px;}
   .install .box{border-left:1px solid var(--fg);padding:4px 0 4px 24px;}
-  .install h3{font-family:var(--nike);font-stretch:75%;font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);}
+  .install h3{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);font-weight:400;}
   .install ol{margin:14px 0 0 18px;color:var(--mute);font-size:16px;}
   .install li{margin-top:8px;}
-  .install li b,.install p b{color:var(--fg);font-weight:700;}
+  .install li b,.install p b{color:var(--fg);font-weight:500;}
   .install p{margin-top:14px;color:var(--mute);font-size:16px;}
   .install p a{color:var(--fg);}
 
@@ -202,30 +166,55 @@
   .needs{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
   .need{border-top:1px solid var(--fg);padding-top:22px;}
   .need svg{height:64px;width:auto;display:block;color:var(--fg);}
-  .need h3{margin-top:18px;font-family:var(--nike);font-stretch:62%;font-weight:900;font-size:28px;line-height:.95;text-transform:uppercase;}
-  .need p{margin-top:8px;color:var(--mute);font-size:15.5px;}
+  .need h3{margin-top:18px;font-weight:500;font-size:19px;}
+  .need p{margin-top:6px;color:var(--mute);font-size:15.5px;}
   .need p a{color:var(--fg);}
 
   footer{
     border-top:1px solid var(--fg);
     padding:26px 0;
     color:var(--mute);
-    font-family:var(--nike);font-stretch:75%;font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    font-family:var(--mono);font-size:13px;letter-spacing:.06em;
   }
   footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 
   /* ---------- responsive ---------- */
   @media (max-width:900px){
-    .setups{grid-template-columns:1fr;gap:48px;}
+    .setups{grid-template-columns:1fr;}
     .shot-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 18px;}
     .needs{grid-template-columns:1fr;gap:22px;}
     .install{grid-template-columns:1fr;}
     .row{grid-template-columns:1fr auto;}
     .row .meta{display:none;}
     .row.head{display:none;}
-    .hero{padding-top:60px;}
+    .hero{padding-top:64px;}
     header img{height:38px;}
     header .crumb{font-size:12px;letter-spacing:.08em;}
+  }
+
+  /* ---------- pills: solid CMY fill, black type (the only place --pillfont is used) ---------- */
+  :root{--pillfont:'Archivo','Arial Narrow',sans-serif;--ink:#000;}
+  .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;}
+  .pill,.btn,.row a{
+    display:inline-block;
+    font-family:var(--pillfont);font-stretch:75%;font-style:italic;font-weight:900;
+    text-transform:uppercase;letter-spacing:.02em;line-height:1;
+    color:var(--ink);text-decoration:none;
+    border:0;border-radius:999px;white-space:nowrap;
+  }
+  .pill{padding:9px 20px 8px;}
+  .pill.c,.btn.c{background:var(--cyan);}
+  .pill.m,.btn.m{background:var(--magenta);}
+  .pill.y,.btn,.row a{background:var(--yellow);}
+  .btn{font-size:24px;padding:16px 34px 15px;}
+  a.btn:hover,.row a:hover{background:var(--cyan);}
+  .btn.c,.btn.m{font-size:18px;padding:13px 24px 12px;cursor:default;}
+  .scene .cap{margin-top:28px;}
+  .scene .cap .pill{font-size:24px;padding:12px 26px 11px;}
+  .setup .cap .pill{font-size:15px;padding:8px 15px 7px;}
+  .shot figcaption .pill{font-size:16px;padding:7px 14px 6px;}
+  .row a{font-size:17px;padding:9px 22px 8px;}
+  @media (max-width:900px){
     .scene .cap .pill{font-size:19px;padding:10px 20px 9px;}
     .setup .cap .pill{font-size:15px;padding:8px 14px 7px;}
     .btn{font-size:20px;padding:14px 28px 13px;}
@@ -287,7 +276,7 @@
 <section class="rule" id="setups">
   <div class="wrap">
     <div class="eyebrow">Two ways to set up</div>
-    <h2>The watch needs a relay.<br>You've got two.</h2>
+    <h2>The watch needs a relay. You've got two.</h2>
     <p class="sub">An Apple Watch can't hear PRO Flags directly. Something in your pocket has to listen for the Flags and hand each press to the watch.</p>
 
     <div class="setups">
@@ -309,7 +298,7 @@
 <section class="rule">
   <div class="wrap">
     <div class="eyebrow">On the wrist</div>
-    <h2>Big digits.<br>One buzz pattern per flag.</h2>
+    <h2>Big digits. One buzz pattern per flag.</h2>
     <p class="sub">Countdown front and centre with the count-up overlay, an opt-in stoppage log, and an end-of-period alarm that keeps buzzing until you tap. Captured on a 46&nbsp;mm Series&nbsp;10.</p>
     <div class="shot-grid">
       <figure class="shot">
