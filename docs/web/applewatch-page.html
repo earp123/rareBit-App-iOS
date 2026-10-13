@@ -14,7 +14,8 @@
   slide-pixel position, so a scene viewBox of "0 118 960 290" reproduces a slide verbatim.
   All four sets, ready to paste, live in rareBit-Garmin/docs/web/rarebit-icons.html:
     Flags + Receiver (vibration alerts), Flags + Relay, Flags + RXRLY, Flags + Bangle.js 2.
-  Palette: black / white page; pills are solid cyan / magenta / yellow with black type.
+  Palette: black / white page; pills are neon (lit face, black gap, rim, halo) with black type.
+  Two accents per section: hero Y+C, setups M+Y, on-the-wrist C, download Y+M.
   Type: Space Grotesk headings + body, Courier Prime labels; pills only in Archivo condensed black italic.
 -->
 <style>
@@ -43,17 +44,11 @@
   a{color:inherit;}
   .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
   .mono{font-family:var(--mono);}
-  .embed header,.embed footer{display:none;}
+  .embed footer{display:none;}
 
-  /* ---------- header ---------- */
-  header{border-bottom:1px solid var(--fg);padding:18px 0;}
-  header .wrap{display:flex;align-items:center;justify-content:space-between;}
-  header img{height:46px;width:auto;display:block;}
-  header .crumb{font-family:var(--mono);font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
-  header .crumb b{color:var(--fg);font-weight:400;}
 
   /* ---------- hero ---------- */
-  .hero{padding:88px 0 40px;}
+  .hero{padding:56px 0 40px;}
   h1{
     font-weight:700;
     font-size:clamp(46px,7.2vw,96px);
@@ -83,14 +78,20 @@
     .nudge{animation:nudge 5s linear infinite;}
     .buzz{animation:buzz 5s linear infinite;}
     .face{animation:face 5s linear infinite;}
-    .idle .w1{animation:wave 4s linear infinite;}
-    .idle .w2{animation:wave 4s linear infinite .16s;}
-    .idle .w3{animation:wave 4s linear infinite .32s;}
+    .idle .w1{animation:waveM 4s linear infinite;}
+    .idle .w2{animation:waveM 4s linear infinite .16s;}
+    .idle .w3{animation:waveM 4s linear infinite .32s;}
   }
   @keyframes wave{
     0%,1%{color:#FFF;}
     5%{color:var(--cyan);}
     18%{color:var(--cyan);}
+    26%,100%{color:#FFF;}
+  }
+  @keyframes waveM{
+    0%,1%{color:#FFF;}
+    5%{color:var(--magenta);}
+    18%{color:var(--magenta);}
     26%,100%{color:#FFF;}
   }
   @keyframes nudge{
@@ -110,7 +111,7 @@
   }
   @keyframes face{
     0%,55%{color:#FFF;}
-    56%,66%{color:var(--magenta);}
+    56%,66%{color:var(--yellow);}
     72%,100%{color:#FFF;}
   }
 
@@ -187,31 +188,38 @@
     .row{grid-template-columns:1fr auto;}
     .row .meta{display:none;}
     .row.head{display:none;}
-    .hero{padding-top:64px;}
-    header img{height:38px;}
-    header .crumb{font-size:12px;letter-spacing:.08em;}
+    .hero{padding-top:40px;}
   }
 
-  /* ---------- pills: solid CMY fill, black type (the only place --pillfont is used) ---------- */
+  /* ---------- pills: neon glow, black type (the only place --pillfont is used) ----------
+     colour = .c / .m / .y (default yellow); each section uses at most two accents */
   :root{--pillfont:'Archivo','Arial Narrow',sans-serif;--ink:#000;}
-  .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;}
+  .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;}
   .pill,.btn,.row a{
+    --c:#FFFF00;--l:#FFFFC2;--g:rgba(255,255,0,.40);
     display:inline-block;
     font-family:var(--pillfont);font-stretch:75%;font-style:italic;font-weight:900;
     text-transform:uppercase;letter-spacing:.02em;line-height:1;
     color:var(--ink);text-decoration:none;
     border:0;border-radius:999px;white-space:nowrap;
+    background:radial-gradient(120% 140% at 50% 0%,var(--l) 0%,var(--c) 55%);
+    box-shadow:0 0 0 2px #000,0 0 0 3.5px var(--c),0 0 18px 2px var(--g),0 0 44px 8px var(--g),inset 0 1px 0 rgba(255,255,255,.9);
+    transition:box-shadow .15s,background .15s;
   }
+  .c{--c:#00FFFF;--l:#C2FFFF;--g:rgba(0,255,255,.45);}
+  .m{--c:#FF00FF;--l:#FFB3FF;--g:rgba(255,0,255,.45);}
+  .y{--c:#FFFF00;--l:#FFFFC2;--g:rgba(255,255,0,.40);}
+  .hero a.btn:hover{--c:#00FFFF;--l:#C2FFFF;--g:rgba(0,255,255,.55);}
+  #downloads a.btn:hover,.row a:hover{--c:#FF00FF;--l:#FFB3FF;--g:rgba(255,0,255,.55);}
   .pill{padding:9px 20px 8px;}
-  .pill.c,.btn.c{background:var(--cyan);}
-  .pill.m,.btn.m{background:var(--magenta);}
-  .pill.y,.btn,.row a{background:var(--yellow);}
   .btn{font-size:24px;padding:16px 34px 15px;}
-  a.btn:hover,.row a:hover{background:var(--cyan);}
   .btn.c,.btn.m{font-size:18px;padding:13px 24px 12px;cursor:default;}
-  .scene .cap{margin-top:28px;}
+  .cta-row{gap:20px;}
+  .scene .cap{margin-top:30px;}
   .scene .cap .pill{font-size:24px;padding:12px 26px 11px;}
+  .setup .cap{margin-top:24px;}
   .setup .cap .pill{font-size:15px;padding:8px 15px 7px;}
+  .shot figcaption{margin-top:18px;}
   .shot figcaption .pill{font-size:16px;padding:7px 14px 6px;}
   .row a{font-size:17px;padding:9px 22px 8px;}
   @media (max-width:900px){
@@ -248,12 +256,6 @@
   </defs>
 </svg>
 
-<header>
-  <div class="wrap">
-    <img src="https://static.wixstatic.com/media/870f4b_b311638af3fb46b1987399498b6ea3a2~mv2.png/v1/fill/w_180,h_108,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/White%20on%20Transparent.png" alt="rareBit">
-    <div class="crumb">Smart Watch / <b>Apple Watch</b></div>
-  </div>
-</header>
 
 <section class="hero">
   <div class="wrap">
@@ -282,13 +284,13 @@
     <div class="setups">
       <div class="setup">
         <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rareBit Flags plus rareBit Relay"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="idle"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="idle"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-relay" x="672" y="226" width="62" height="114"/><use href="#i-arrow" x="680" y="341" width="51" height="27"/><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
-        <div class="cap pills"><span class="pill c">rareBit Flags + rareBit Relay</span><span class="pill y">Smartwatch Alerts</span></div>
+        <div class="cap pills"><span class="pill m">rareBit Flags + rareBit Relay</span><span class="pill y">Smartwatch Alerts</span></div>
         <p class="desc"><b>The dedicated relay.</b> Small, pocketable, charges over USB-C. Hears every linked Flag and pushes each press straight to the watch — your phone can stay in the bag. <a href="https://www.rarebitofficial.com/shop">Shop</a></p>
       </div>
 
       <div class="setup">
         <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rareBit Flags plus a PRO Receiver running RXRLY"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="idle"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="idle"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-receiver" x="653" y="226" width="97" height="100"/><use href="#i-arrow-l" x="669" y="328" width="80" height="28"/><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
-        <div class="cap pills"><span class="pill c">rareBit Flags + RXRLY</span><span class="pill y">Smartwatch Alerts</span></div>
+        <div class="cap pills"><span class="pill m">rareBit Flags + RXRLY</span><span class="pill y">Smartwatch Alerts</span></div>
         <p class="desc"><b>Reuse your PRO Receiver.</b> Flash the free RXRLY firmware and the Receiver you already own becomes the relay. <a href="https://www.rarebitofficial.com/services-4">RXRLY firmware</a></p>
       </div>
     </div>
@@ -336,7 +338,7 @@
     <p class="sub">One download covers both. Install <b>rareBit</b> on your iPhone and the Apple&nbsp;Watch app comes with it.</p>
     <div class="cta-row">
       <a class="btn" href="https://apps.apple.com/us/app/rarebit/id6758751793">Open in the App Store</a>
-      <span class="btn c">iOS 26 · watchOS 26+</span>
+      <span class="btn m">iOS 26 · watchOS 26+</span>
     </div>
 
     <div class="install">
