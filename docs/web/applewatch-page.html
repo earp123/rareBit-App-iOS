@@ -7,7 +7,7 @@
 <script>(function(){if(new URLSearchParams(location.search).has('embed')){document.documentElement.classList.add('embed');}addEventListener('DOMContentLoaded',function(){document.querySelectorAll('a[href^="http"]').forEach(function(a){if(a.target)return;a.target=/rarebitofficial\.com/.test(a.href)?'_top':'_blank';if(a.target==='_blank'){a.rel='noopener';}});});})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Courier+Prime:wght@400;700&family=Barlow+Condensed:ital,wght@1,600;1,700;1,800&display=swap" rel="stylesheet">
 <!--
   rareBit page template (Apple Watch) — strict black / white, CMY accents only as a whisper.
   The icon sprite is traced 1:1 from the slide-deck PNGs (960x540); every <use> below sits at its
@@ -27,6 +27,7 @@
     --yellow:#FFFF00;
     --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
     --mono:'Courier Prime',ui-monospace,Menlo,Consolas,monospace;
+    --sport:'Barlow Condensed','Arial Narrow',sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{scroll-behavior:smooth;background:var(--bg);}
@@ -65,27 +66,34 @@
   .cta-row{margin-top:36px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
   .btn{
     display:inline-block;
-    font-family:var(--mono);
-    font-size:15px;letter-spacing:.12em;text-transform:uppercase;
-    padding:15px 26px;
+    font-family:var(--sport);font-style:italic;font-weight:800;
+    font-size:21px;letter-spacing:.05em;text-transform:uppercase;
+    padding:14px 32px 13px;
     text-decoration:none;
-    border:1px solid var(--fg);
+    border:2px solid var(--fg);border-radius:999px;
     line-height:1;
   }
   .btn-primary{background:var(--fg);color:var(--bg);}
   .btn-primary:hover{background:var(--yellow);border-color:var(--yellow);}
   .btn-ghost{color:var(--mute);border-color:var(--line);}
-  .tag{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);}
+  .tag{font-family:var(--sport);font-style:italic;font-weight:600;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);}
+
+  /* ---------- sporty pills ---------- */
+  .pills{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
+  .pill{
+    display:inline-block;
+    font-family:var(--sport);font-style:italic;font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;line-height:1;
+    border:2px solid var(--fg);border-radius:999px;
+    padding:9px 20px 8px;white-space:nowrap;
+  }
+  .pill.solid{background:var(--fg);color:var(--bg);}
 
   /* ---------- scene (icon composition) ---------- */
   .scene{padding:24px 0 72px;}
   .scene svg{width:100%;height:auto;display:block;color:var(--fg);}
-  .scene .cap{
-    margin-top:22px;
-    font-family:var(--mono);font-size:17px;letter-spacing:.04em;
-    color:var(--fg);text-align:center;
-  }
-  .scene .cap span{color:var(--mute);}
+  .scene .cap{margin-top:26px;}
+  .scene .cap .pill{font-size:21px;padding:11px 24px 10px;}
   .w1,.w2,.w3{opacity:1;}
   .face{color:var(--fg);}
 
@@ -139,16 +147,16 @@
 
   /* ---------- setups ---------- */
   .setups{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:28px;}
-  .setup{border:1px solid var(--fg);padding:28px 28px 26px;}
+  .setup{padding:8px 0 0;}
   .setup svg{width:100%;height:auto;display:block;color:var(--fg);}
-  .setup .cap{margin-top:18px;font-family:var(--mono);font-size:14px;letter-spacing:.02em;text-align:center;}
-  .setup .cap span{color:var(--mute);}
+  .setup .cap{margin-top:20px;}
+  .setup .cap .pill{font-size:14px;letter-spacing:.03em;padding:8px 15px 7px;}
   .setup .desc{margin-top:16px;color:var(--mute);font-size:16px;border-top:1px solid var(--line);padding-top:16px;}
   .setup .desc b{color:var(--fg);font-weight:500;}
   .setup .desc a{color:var(--fg);}
 
   /* ---------- screenshots ---------- */
-  .shot-grid{margin-top:40px;display:grid;grid-template-columns:repeat(6,1fr);gap:26px;}
+  .shot-grid{margin-top:40px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:26px;}
   .shot{margin:0;}
   .shot img{
     width:100%;aspect-ratio:416/496;display:block;
@@ -156,11 +164,8 @@
     background:#000;
     box-shadow:0 0 0 2px var(--fg);
   }
-  .shot figcaption{
-    margin-top:16px;text-align:center;
-    font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--mute);
-  }
+  .shot figcaption{margin-top:16px;text-align:center;}
+  .shot figcaption .pill{font-size:14px;letter-spacing:.03em;padding:7px 13px 6px;border-width:1.5px;}
 
   /* ---------- downloads ---------- */
   .dl{margin-top:36px;border-top:1px solid var(--fg);}
@@ -175,9 +180,10 @@
   .row .name{font-weight:500;font-size:18px;}
   .row .meta{font-family:var(--mono);font-size:15px;color:var(--mute);}
   .row a{
-    font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;
+    font-family:var(--sport);font-style:italic;font-weight:700;
+    font-size:16px;letter-spacing:.05em;text-transform:uppercase;
     color:var(--fg);text-decoration:none;
-    border:1px solid var(--fg);padding:9px 16px;line-height:1;
+    border:1.5px solid var(--fg);border-radius:999px;padding:8px 20px 7px;line-height:1;
     white-space:nowrap;
   }
   .row a:hover{background:var(--yellow);border-color:var(--yellow);color:var(--bg);}
@@ -209,7 +215,10 @@
   /* ---------- responsive ---------- */
   @media (max-width:900px){
     .setups{grid-template-columns:1fr;}
-    .shot-grid{grid-template-columns:repeat(3,1fr);gap:18px;}
+    .shot-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 18px;}
+    .scene .cap .pill{font-size:17px;padding:9px 18px 8px;}
+    .setup .cap .pill{font-size:14px;padding:8px 14px 7px;}
+    .btn{font-size:18px;padding:13px 26px 12px;}
     .needs{grid-template-columns:1fr;gap:22px;}
     .install{grid-template-columns:1fr;}
     .row{grid-template-columns:1fr auto;}
@@ -269,7 +278,7 @@
 <section class="scene">
   <div class="wrap">
     <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two rareBit Flags signal a rareBit Relay, which forwards the alert to an Apple Watch"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="sig"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="sig sig-2"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-relay" x="672" y="226" width="62" height="114"/><g class="nudge"><use href="#i-arrow" x="680" y="341" width="51" height="27"/></g><g class="buzz"><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use class="face" href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></g></svg>
-    <p class="cap">rareBit Flags + rareBit Relay <span>(Smartwatch Alerts)</span></p>
+    <div class="cap pills"><span class="pill">rareBit Flags + rareBit Relay</span><span class="pill solid">Smartwatch Alerts</span></div>
   </div>
 </section>
 
@@ -277,18 +286,18 @@
   <div class="wrap">
     <div class="eyebrow">Two ways to set up</div>
     <h2>The watch needs a relay. You've got two.</h2>
-    <p class="sub">An Apple Watch can't hear PRO Flags directly. Something in your pocket has to listen for the Flags and hand each press to the watch over Bluetooth&nbsp;LE.</p>
+    <p class="sub">An Apple Watch can't hear PRO Flags directly. Something in your pocket has to listen for the Flags and hand each press to the watch.</p>
 
     <div class="setups">
       <div class="setup">
         <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rareBit Flags plus rareBit Relay"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="idle"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="idle"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-relay" x="672" y="226" width="62" height="114"/><use href="#i-arrow" x="680" y="341" width="51" height="27"/><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
-        <p class="cap">rareBit Flags + rareBit Relay <span>(Smartwatch Alerts)</span></p>
+        <div class="cap pills"><span class="pill">rareBit Flags + rareBit Relay</span><span class="pill solid">Smartwatch Alerts</span></div>
         <p class="desc"><b>The dedicated relay.</b> Small, pocketable, charges over USB-C. Hears every linked Flag and pushes each press straight to the watch — your phone can stay in the bag. <a href="https://www.rarebitofficial.com/shop">Shop</a></p>
       </div>
 
       <div class="setup">
         <svg viewBox="0 118 960 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="rareBit Flags plus a PRO Receiver running RXRLY"><use href="#i-flag" x="56" y="127" width="194" height="243"/><use href="#i-flag" x="272" y="127" width="194" height="243"/><g class="idle"><use class="w1" href="#i-wr1" x="441" y="226" width="50" height="89"/><use class="w2" href="#i-wr2" x="441" y="226" width="50" height="89"/><use class="w3" href="#i-wr3" x="441" y="226" width="50" height="89"/></g><g class="idle"><use class="w1" href="#i-wu1" x="669" y="180" width="67" height="41"/><use class="w2" href="#i-wu2" x="669" y="180" width="67" height="41"/><use class="w3" href="#i-wu3" x="669" y="180" width="67" height="41"/></g><use href="#i-receiver" x="653" y="226" width="97" height="100"/><use href="#i-arrow-l" x="669" y="328" width="80" height="28"/><use href="#i-strap-top" x="788" y="143" width="40" height="93"/><use href="#i-face" x="775" y="236" width="66" height="68"/><use href="#i-strap-bot" x="788" y="304" width="40" height="93"/></svg>
-        <p class="cap">rareBit Flags + RXRLY <span>(Smartwatch Alerts)</span></p>
+        <div class="cap pills"><span class="pill">rareBit Flags + RXRLY</span><span class="pill solid">Smartwatch Alerts</span></div>
         <p class="desc"><b>Reuse your PRO Receiver.</b> Flash the free RXRLY firmware and the Receiver you already own becomes the relay. <a href="https://www.rarebitofficial.com/services-4">RXRLY firmware</a></p>
       </div>
     </div>
@@ -303,27 +312,27 @@
     <div class="shot-grid">
       <figure class="shot">
         <img src="screenshots/01-home-searching.png" alt="Home screen: searching for a rareBit Relay" loading="lazy">
-        <figcaption>Finding relay</figcaption>
+        <figcaption><span class="pill">Finding relay</span></figcaption>
       </figure>
       <figure class="shot">
         <img src="screenshots/04-timer-running.png" alt="Match timer running with the count-up overlay" loading="lazy">
-        <figcaption>Match running</figcaption>
+        <figcaption><span class="pill">Match running</span></figcaption>
       </figure>
       <figure class="shot">
         <img src="screenshots/02-playback-haptic.png" alt="Alert haptic preset playback" loading="lazy">
-        <figcaption>Alert haptics</figcaption>
+        <figcaption><span class="pill">Alert haptics</span></figcaption>
       </figure>
       <figure class="shot">
         <img src="screenshots/08-timer-stoppage-running.png" alt="Timer with an open stoppage segment" loading="lazy">
-        <figcaption>Stoppage</figcaption>
+        <figcaption><span class="pill">Stoppage</span></figcaption>
       </figure>
       <figure class="shot">
         <img src="screenshots/05-timer-paused.png" alt="Match timer paused" loading="lazy">
-        <figcaption>Paused</figcaption>
+        <figcaption><span class="pill">Paused</span></figcaption>
       </figure>
       <figure class="shot">
         <img src="screenshots/06-edit-mode.png" alt="Edit screen: duration, period, count-up toggle" loading="lazy">
-        <figcaption>Settings</figcaption>
+        <figcaption><span class="pill">Settings</span></figcaption>
       </figure>
     </div>
   </div>
